@@ -1,6 +1,6 @@
-### `HRMS Lite | Enterprise Intelligent Workforce Management`
-
 <div align="center">
+
+### `👨‍💼 HRMS Lite | Enterprise Intelligent Workforce Management`
 
 ![Status](https://img.shields.io/badge/Status-Live-brightgreen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
