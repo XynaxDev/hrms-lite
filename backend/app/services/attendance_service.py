@@ -216,6 +216,50 @@ class AttendanceService:
         }
 
     @staticmethod
+    def get_absent_employees(db: Session, date_str: str = None) -> List[dict]:
+        """Get employees who are absent or have no attendance record for a specific date."""
+        from app.models.employee import Employee, StatusEnum
+        
+        if not date_str:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+        
+        # Get all active employees
+        all_employees = db.query(Employee).filter(Employee.status == StatusEnum.ACTIVE).all()
+        
+        # Get today's attendance records
+        today_attendance = db.query(Attendance).filter(Attendance.date == date_str).all()
+        
+        # Create a set of employee IDs who have attendance marked
+        marked_employee_ids = {att.employee_id for att in today_attendance}
+        
+        # Find employees who are absent (no record) or marked as absent
+        absent_employees = []
+        for emp in all_employees:
+            # Check if employee has attendance record for today
+            if emp.id not in marked_employee_ids:
+                # No attendance record = absent
+                absent_employees.append({
+                    "id": emp.id,
+                    "name": emp.full_name,
+                    "department": emp.department.value,
+                    "role": emp.role,
+                    "reason": "No attendance marked"
+                })
+            else:
+                # Check if marked as absent
+                att_record = next((att for att in today_attendance if att.employee_id == emp.id), None)
+                if att_record and att_record.status == AttendanceStatusEnum.ABSENT:
+                    absent_employees.append({
+                        "id": emp.id,
+                        "name": emp.full_name,
+                        "department": emp.department.value,
+                        "role": emp.role,
+                        "reason": "Marked as Absent"
+                    })
+        
+        return absent_employees
+
+    @staticmethod
     def get_attendance_report(
         db: Session, start_date: str, end_date: str
     ) -> List[dict]:

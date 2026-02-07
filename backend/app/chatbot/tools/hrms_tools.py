@@ -152,6 +152,37 @@ def get_employees_on_leave() -> str:
 
 
 @tool
+def get_absent_employees_today() -> str:
+    """Get all employees who are absent today (no attendance marked or marked as Absent).
+
+    Use this when the user asks about who is absent, missing, or didn't check in today.
+    """
+    db = get_db_session()
+    try:
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        absent_employees = AttendanceService.get_absent_employees(db, today)
+        
+        if not absent_employees:
+            return "All active employees have checked in today. No one is absent!"
+
+        employee_list = "\n".join(
+            [
+                f"- {emp['name']} ({emp['department']}, {emp['role']}) - {emp['reason']}"
+                for emp in absent_employees
+            ]
+        )
+        return (
+            f"Employees absent today ({len(absent_employees)} total):\n{employee_list}"
+        )
+    except Exception as e:
+        return f"I couldn't retrieve the absent employee list. Error: {str(e)}"
+    finally:
+        db.close()
+
+
+@tool
 def get_department_breakdown() -> str:
     """Get the employee count breakdown by department.
 
@@ -222,6 +253,17 @@ def get_employee_details(identifier: str) -> str:
         # If not found, try by email
         if not employee and "@" in identifier:
             employee = EmployeeService.get_employee_by_email(db, identifier)
+
+        # If not found, try searching by name
+        if not employee:
+            employees, total = EmployeeService.get_all_employees(db, search=identifier, limit=5)
+            if employees:
+                if len(employees) == 1:
+                    employee = employees[0]
+                else:
+                    # Multiple matches, show list
+                    matches = "\n".join([f"- {emp.full_name} ({emp.id}, {emp.department.value})" for emp in employees[:5]])
+                    return f"Multiple employees found matching '{identifier}':\n{matches}\n\nPlease specify the employee ID for detailed information."
 
         if not employee:
             return f"No employee found with identifier: {identifier}"
@@ -377,6 +419,7 @@ HRMS_TOOLS = [
     get_total_employees,
     get_employees_by_department,
     get_employees_on_leave,
+    get_absent_employees_today,
     get_department_breakdown,
     get_status_breakdown,
     get_employee_details,
