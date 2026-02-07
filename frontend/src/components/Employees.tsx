@@ -1,0 +1,702 @@
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import { DEPARTMENTS } from '../constants';
+import Select from './ui/Select';
+import Dialog from './ui/Dialog';
+import Calendar from './ui/Calendar';
+import { Employee, Status, Department } from '../types';
+import { fetchAttendanceSummary } from '../services/api';
+
+interface EmployeesProps {
+  employees: Employee[];
+  onAddEmployee: (employee: Employee) => void;
+  onUpdateEmployee: (id: string, employee: any) => void;
+  onDeleteEmployee: (id: string) => void;
+}
+
+const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDept, setSelectedDept] = useState('All');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editEmployee, setEditEmployee] = useState<any>(null);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+  
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
+
+  useEffect(() => {
+    const loadAttendanceSummary = async () => {
+      try {
+        const data = await fetchAttendanceSummary();
+        setAttendanceSummary(data.summary);
+      } catch (error) {
+        console.error('Error loading attendance summary:', error);
+      }
+    };
+    loadAttendanceSummary();
+  }, []);
+  
+  const [newEmployee, setNewEmployee] = useState<{
+    fullName: string;
+    email: string;
+    role: string;
+    department: string;
+    status: string;
+    location: string;
+    avatarUrl: string;
+    joinedDate: string;
+    id: string;
+  }>({
+    fullName: '',
+    email: '',
+    role: '',
+    department: DEPARTMENTS[0],
+    status: 'Active',
+    location: '',
+    avatarUrl: '',
+    joinedDate: new Date().toISOString().split('T')[0],
+    id: ''
+  });
+
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          emp.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDept = selectedDept === 'All' || emp.department === selectedDept;
+    
+    let matchesDate = true;
+    if (filterStartDate) {
+       matchesDate = matchesDate && emp.joinedDate >= filterStartDate;
+    }
+    if (filterEndDate) {
+       matchesDate = matchesDate && emp.joinedDate <= filterEndDate;
+    }
+
+    return matchesSearch && matchesDept && matchesDate;
+  });
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentEmployees = filteredEmployees.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const handleAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const employeeToAdd: any = {
+      id: newEmployee.id || `#EMP-${Math.floor(Math.random() * 10000)}`,
+      fullName: newEmployee.fullName,
+      email: newEmployee.email,
+      role: newEmployee.role,
+      department: newEmployee.department as Department,
+      status: 'Active',
+      location: newEmployee.location || 'Remote',
+      avatar: newEmployee.avatarUrl || `https://i.pravatar.cc/150?u=${newEmployee.fullName.replace(/\s/g, '')}`,
+      joinedDate: newEmployee.joinedDate || new Date().toISOString().split('T')[0]
+    };
+
+    onAddEmployee(employeeToAdd);
+    setIsAddModalOpen(false);
+    
+    setNewEmployee({
+        fullName: '',
+        email: '',
+        role: '',
+        department: DEPARTMENTS[0],
+        status: 'Active',
+        location: '',
+        avatarUrl: '',
+        joinedDate: new Date().toISOString().split('T')[0],
+        id: ''
+    });
+  };
+
+  const confirmDelete = () => {
+    if (employeeToDelete) {
+      onDeleteEmployee(employeeToDelete);
+      setEmployeeToDelete(null);
+    }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setNewEmployee({ ...newEmployee, avatarUrl: reader.result as string });
+          };
+          reader.readAsDataURL(file);
+      }
+  }
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editEmployee) return;
+
+    onUpdateEmployee(editEmployee.id, {
+      fullName: editEmployee.fullName,
+      email: editEmployee.email,
+      role: editEmployee.role,
+      department: editEmployee.department,
+      status: editEmployee.status,
+      location: editEmployee.location,
+      avatar: editEmployee.avatar,
+      joinedDate: editEmployee.joinedDate
+    });
+    setIsEditModalOpen(false);
+    setEditEmployee(null);
+  };
+
+  const deptOptions = [
+    { value: 'All', label: 'All Departments' },
+    ...DEPARTMENTS.map(dept => ({ value: dept, label: dept }))
+  ];
+
+  const statusOptions = [
+    { value: 'Active', label: 'Active' },
+    { value: 'On Leave', label: 'On Leave' },
+    { value: 'Terminated', label: 'Terminated' }
+  ];
+
+  return (
+    <div className="animate-in fade-in duration-500 pb-10">
+      <div className="mb-6 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Employees</h1>
+          <p className="mt-2 text-base text-slate-500 font-medium">Manage your team members and roles.</p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="relative group flex-1 sm:min-w-[300px]">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition-colors">search</span>
+            <input 
+              type="text" 
+              placeholder="Search people..." 
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); 
+              }}
+              className="pl-9 pr-4 py-2.5 h-10 w-full bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-all shadow-sm"
+            />
+          </div>
+          
+          <div className="w-full sm:w-48">
+            <Select 
+              value={selectedDept} 
+              onChange={(val) => {
+                setSelectedDept(val);
+                setCurrentPage(1);
+              }} 
+              options={deptOptions} 
+            />
+          </div>
+          
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 h-10 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95 hover:-translate-y-0.5 whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-lg">add</span>
+            <span>Add Employee</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-10 flex flex-col sm:flex-row items-center gap-4 bg-slate-200/30 p-2.5 rounded-2xl border border-slate-200/50 w-fit">
+        <div className="flex items-center gap-2 text-sm text-slate-500 font-semibold px-2">
+          <span className="material-symbols-outlined text-xl">filter_list</span>
+          <span>Joined Date:</span>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="w-full sm:w-40">
+            <Calendar value={filterStartDate} onChange={setFilterStartDate} />
+          </div>
+          <span className="text-slate-400 font-bold">→</span>
+          <div className="w-full sm:w-40">
+            <Calendar value={filterEndDate} onChange={setFilterEndDate} />
+          </div>
+        </div>
+        {(filterStartDate || filterEndDate) && (
+          <button 
+            onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+            className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+            Clear
+          </button>
+        )}
+      </div>
+
+      <div className="min-h-[400px]">
+        {currentEmployees.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {currentEmployees.map((emp) => {
+                const empAttendance = attendanceSummary?.find((s: any) => s.id === emp.id);
+                return (
+              <div key={emp.id} className={`group relative flex flex-col items-center rounded-2xl border bg-white p-6 text-center shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 hover:border-slate-200 ${empAttendance ? 'border-emerald-100 animate-pulse' : 'border-slate-100'}`}>
+                  {/* Attendance Days Badge (pulse, top-left) */}
+                  {empAttendance && empAttendance.present > 0 && (
+                    <div className="absolute left-3 top-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 shadow-md animate-pulse">
+                      <span className="material-symbols-outlined text-emerald-600 text-sm animate-bounce">check_circle</span>
+                      <span className="text-xs font-bold text-emerald-700">{empAttendance.present}d</span>
+                    </div>
+                  )}
+                  {/* Action buttons (eye, delete) */}
+                  <div className="absolute right-3 top-3 flex gap-2">
+                    <button 
+                      onClick={() => setSelectedEmployee(emp)} 
+                      className="text-slate-500 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-blue-50 bg-white shadow-sm"
+                      title="View Profile"
+                    >
+                      <span className="material-symbols-outlined text-lg">visibility</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (emp.id && emp.id.trim() !== '') {
+                          setEmployeeToDelete(emp.id);
+                        } else {
+                          alert('Cannot delete: Employee ID is missing!');
+                        }
+                      }} 
+                      className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-lg hover:bg-rose-50 bg-white shadow-sm"
+                      title="Delete Employee"
+                    >
+                      <span className="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  </div>
+
+                  <div className="relative mb-4">
+                    <img src={emp.avatar} alt={emp.fullName} className="h-24 w-24 rounded-full object-cover shadow-lg ring-4 ring-slate-50 transition-transform group-hover:scale-105" />
+                    <div className={`absolute bottom-0 right-0 h-5 w-5 rounded-full border-[3px] border-white ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'On Leave' ? 'bg-amber-400' : 'bg-rose-500'}`} />
+                  </div>
+                  
+                  <p className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">{emp.id}</p>
+                  <h3 className="text-base font-bold text-slate-900">{emp.fullName}</h3>
+                  <p className="text-sm text-slate-500 mb-1 font-medium">{emp.role}</p>
+                  <span className="mb-4 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                    {emp.department}
+                  </span>
+                  
+                  <div className="mt-auto w-full space-y-3 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+                      <span className="material-symbols-outlined text-sm text-slate-400">location_on</span>
+                      <span>{emp.location || 'Remote'}</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+                      <span className="material-symbols-outlined text-sm text-slate-400">calendar_month</span>
+                      <span>Joined {emp.joinedDate}</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+                      <span className="material-symbols-outlined text-sm text-slate-400">mail</span>
+                      <span className="truncate max-w-[150px]">{emp.email}</span>
+                    </div>
+                    
+                    <button 
+                      onClick={() => {
+                        setEditEmployee({...emp});
+                        setIsEditModalOpen(true);
+                      }}
+                      className="w-full rounded-lg bg-slate-900 text-white py-2 text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">edit</span>
+                      Edit Profile
+                    </button>
+                  </div>
+              </div>
+              );
+              })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-64 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+             <span className="material-symbols-outlined text-4xl mb-2">person_search</span>
+             <p className="text-sm font-medium">No employees found.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-8 mt-auto flex items-center justify-between border-t border-slate-100 bg-white rounded-b-2xl">
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            Showing <span className="text-slate-900">{filteredEmployees.length > 0 ? indexOfFirstItem + 1 : 0}</span> - <span className="text-slate-900">{Math.min(indexOfLastItem, filteredEmployees.length)}</span> of <span className="text-slate-900">{filteredEmployees.length}</span>
+        </span>
+        <div className="flex items-center gap-2">
+            <button 
+            onClick={handlePrevPage}
+            disabled={currentPage === 1}
+            className="h-9 px-4 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-white shadow-sm"
+            >
+            Prev
+            </button>
+            <button 
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="h-9 px-4 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-widest hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-white shadow-sm"
+            >
+            Next
+            </button>
+        </div>
+      </div>
+
+      <Dialog 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add New Employee"
+        description="Enter employee details."
+      >
+        <form onSubmit={handleAddSubmit}>
+            <div className="grid gap-3 py-3">
+                <div className="flex items-center gap-3 mb-1">
+                    <div className="relative group cursor-pointer overflow-hidden rounded-full h-14 w-14 bg-slate-50 border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-100 transition-all flex items-center justify-center shrink-0">
+                        {newEmployee.avatarUrl ? (
+                            <img src={newEmployee.avatarUrl} alt="Preview" className="h-full w-full object-cover" />
+                        ) : (
+                            <span className="material-symbols-outlined text-xl text-slate-400">add_a_photo</span>
+                        )}
+                        <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleAvatarChange}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <label className="text-xs font-semibold text-slate-900">Profile Photo</label>
+                        <p className="text-[10px] text-slate-500 mt-0.5">JPG, PNG or GIF</p>
+                    </div>
+                </div>
+
+                <div className="space-y-2.5">
+                    <div>
+                        <label className="text-xs font-medium text-slate-700 mb-1 block">Employee ID</label>
+                        <input 
+                            required
+                            value={newEmployee.id}
+                            onChange={e => setNewEmployee({...newEmployee, id: e.target.value})}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            placeholder="#EMP-001"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-slate-700 mb-1 block">Full Name</label>
+                        <input 
+                            required
+                            value={newEmployee.fullName}
+                            onChange={e => setNewEmployee({...newEmployee, fullName: e.target.value})}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            placeholder="Jane Doe"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-slate-700 mb-1 block">Email</label>
+                        <input 
+                            required
+                            type="email"
+                            value={newEmployee.email}
+                            onChange={e => setNewEmployee({...newEmployee, email: e.target.value})}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            placeholder="jane@example.com"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-slate-700 mb-1 block">Role</label>
+                        <input 
+                            required
+                            value={newEmployee.role}
+                            onChange={e => setNewEmployee({...newEmployee, role: e.target.value})}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            placeholder="Product Designer"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-slate-700 mb-1 block">Department</label>
+                        <Select 
+                            value={newEmployee.department}
+                            onChange={(val) => setNewEmployee({...newEmployee, department: val})}
+                            options={DEPARTMENTS.map(d => ({value: d, label: d}))}
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-slate-700 mb-1 block">Location</label>
+                        <input 
+                            value={newEmployee.location}
+                            onChange={e => setNewEmployee({...newEmployee, location: e.target.value})}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            placeholder="New York, USA"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-slate-700 mb-1 block">Joined Date</label>
+                        <Calendar value={newEmployee.joinedDate} onChange={(d) => setNewEmployee({...newEmployee, joinedDate: d})} />
+                    </div>
+                </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+                <button 
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="submit"
+                    className="rounded-lg bg-slate-900 px-5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                >
+                    Add Employee
+                </button>
+            </div>
+        </form>
+      </Dialog>
+
+      <Dialog
+        isOpen={!!employeeToDelete}
+        onClose={() => setEmployeeToDelete(null)}
+        title="Remove Employee"
+      >
+         <div className="py-2">
+            <div className="flex items-center gap-3 mb-4 p-3 bg-rose-50 rounded-lg border border-rose-100">
+               <div className="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                  <span className="material-symbols-outlined text-lg">warning</span>
+               </div>
+               <div>
+                  <h4 className="text-xs font-bold text-rose-800">Irreversible Action</h4>
+                  <p className="text-[10px] text-rose-600 mt-0.5">Permanently deletes employee data.</p>
+               </div>
+            </div>
+            <p className="text-xs text-slate-600 mb-5">Are you sure you want to delete this employee?</p>
+            
+            <div className="flex justify-end gap-2">
+               <button 
+                  onClick={() => setEmployeeToDelete(null)}
+                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-50"
+               >
+                  Cancel
+               </button>
+               <button 
+                  onClick={confirmDelete}
+                  className="px-4 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700"
+               >
+                  Delete
+               </button>
+            </div>
+         </div>
+      </Dialog>
+
+      <Dialog
+        isOpen={!!selectedEmployee && !isEditModalOpen}
+        onClose={() => setSelectedEmployee(null)}
+        title="Employee Profile"
+        description="View team member information."
+      >
+          {selectedEmployee && (
+              <div className="py-2">
+                    <div className="flex items-center gap-3 mb-4 relative">
+                      {/* Attendance Days Badge (pulse, top-left in modal) */}
+                      {attendanceSummary && (() => {
+                      const att = attendanceSummary.find((s: any) => s.id === selectedEmployee.id);
+                      return att && att.present > 0 ? (
+                        <div className="absolute left-0 top-0 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 shadow-md animate-pulse">
+                        <span className="material-symbols-outlined text-emerald-600 text-sm animate-bounce">check_circle</span>
+                        <span className="text-xs font-bold text-emerald-700">{att.present}d</span>
+                        </div>
+                      ) : null;
+                      })()}
+                      <img src={selectedEmployee.avatar} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{selectedEmployee.id}</p>
+                        <h3 className="text-base font-bold text-slate-900 truncate">{selectedEmployee.fullName}</h3>
+                        <p className="text-xs text-slate-500 font-medium truncate">{selectedEmployee.role}</p>
+                        <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          selectedEmployee.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 
+                          selectedEmployee.status === 'On Leave' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {selectedEmployee.status}
+                        </span>
+                      </div>
+                    </div>
+                  
+                  <div className="grid grid-cols-2 gap-2.5 mb-3">
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                          <p className="text-[10px] text-slate-400 font-medium uppercase">Department</p>
+                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.department}</p>
+                      </div>
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                          <p className="text-[10px] text-slate-400 font-medium uppercase">Location</p>
+                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.location || 'Remote'}</p>
+                      </div>
+                      <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
+                          <p className="text-[10px] text-slate-400 font-medium uppercase">Date Joined</p>
+                          <p className="text-xs font-semibold text-slate-900 mt-0.5">{selectedEmployee.joinedDate}</p>
+                      </div>
+                      <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                          <p className="text-[10px] text-slate-400 font-medium uppercase">Email</p>
+                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.email}</p>
+                      </div>
+                      {attendanceSummary && attendanceSummary.find((s: any) => s.id === selectedEmployee.id) && (
+                        <>
+                          <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                              <p className="text-[10px] text-emerald-600 font-medium uppercase">Present</p>
+                              <p className="text-lg font-bold text-emerald-700 mt-0.5">{attendanceSummary.find((s: any) => s.id === selectedEmployee.id).present}</p>
+                          </div>
+                          <div className="p-2 bg-rose-50 rounded-lg border border-rose-200">
+                              <p className="text-[10px] text-rose-600 font-medium uppercase">Absent</p>
+                              <p className="text-lg font-bold text-rose-700 mt-0.5">{attendanceSummary.find((s: any) => s.id === selectedEmployee.id).absent}</p>
+                          </div>
+                          <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                              <p className="text-[10px] text-blue-600 font-medium uppercase">On Leave</p>
+                              <p className="text-lg font-bold text-blue-700 mt-0.5">{attendanceSummary.find((s: any) => s.id === selectedEmployee.id).on_leave}</p>
+                          </div>
+                        </>
+                      )}
+                  </div>
+
+                  <div className="flex justify-end">
+                      <button 
+                        onClick={() => setSelectedEmployee(null)}
+                        className="px-4 py-1.5 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 text-xs"
+                      >
+                          Close
+                      </button>
+                  </div>
+              </div>
+          )}
+      </Dialog>
+
+      <Dialog 
+        isOpen={isEditModalOpen} 
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditEmployee(null);
+        }}
+        title="Edit Employee"
+        description="Modify team member details."
+      >
+        {editEmployee && (
+            <form onSubmit={handleEditSubmit}>
+                <div className="grid gap-3 py-3">
+                    <div className="flex items-center gap-3 mb-1">
+                        <div className="relative group cursor-pointer overflow-hidden rounded-full h-14 w-14 bg-slate-50 border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-100 transition-all flex items-center justify-center shrink-0">
+                            <img src={editEmployee.avatar} alt="Preview" className="h-full w-full object-cover" />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span className="material-symbols-outlined text-lg text-white">add_a_photo</span>
+                            </div>
+                            <input 
+                                type="file" 
+                                accept="image/*"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            setEditEmployee({ ...editEmployee, avatar: reader.result as string });
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-xs font-semibold text-slate-900">Profile Photo</label>
+                            <p className="text-[10px] text-slate-500 mt-0.5">JPG, PNG or GIF</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2.5">
+                        <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Full Name</label>
+                            <input 
+                                required
+                                value={editEmployee.fullName}
+                                onChange={e => setEditEmployee({...editEmployee, fullName: e.target.value})}
+                                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Email</label>
+                            <input 
+                                required
+                                type="email"
+                                value={editEmployee.email}
+                                onChange={e => setEditEmployee({...editEmployee, email: e.target.value})}
+                                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Role</label>
+                            <input 
+                                required
+                                value={editEmployee.role}
+                                onChange={e => setEditEmployee({...editEmployee, role: e.target.value})}
+                                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Department</label>
+                            <Select 
+                                value={editEmployee.department}
+                                onChange={(val) => setEditEmployee({...editEmployee, department: val})}
+                                options={DEPARTMENTS.map(d => ({value: d, label: d}))}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Status</label>
+                            <Select 
+                                value={editEmployee.status}
+                                onChange={(val) => setEditEmployee({...editEmployee, status: val})}
+                                options={statusOptions}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Location</label>
+                            <input 
+                                value={editEmployee.location}
+                                onChange={e => setEditEmployee({...editEmployee, location: e.target.value})}
+                                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-slate-700 mb-1 block">Joined Date</label>
+                            <Calendar value={editEmployee.joinedDate} onChange={(d) => setEditEmployee({...editEmployee, joinedDate: d})} />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
+                    <button 
+                        type="button"
+                        onClick={() => {
+                          setIsEditModalOpen(false);
+                          setEditEmployee(null);
+                        }}
+                        className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit"
+                        className="rounded-lg bg-slate-900 px-5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        )}
+      </Dialog>
+    </div>
+  );
+};
+
+export default Employees;

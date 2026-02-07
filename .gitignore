@@ -1,0 +1,8 @@
+# Root gitignore
+*/node_modules/
+*/venv/
+*/.env
+*/__pycache__/
+*/dist/
+*/.vercel/
+*.log
