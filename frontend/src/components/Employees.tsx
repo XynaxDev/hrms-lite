@@ -173,15 +173,15 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
   ];
 
   return (
-    <div className="animate-in fade-in duration-500 pb-10">
+    <div className="pb-10">
       <div className="mb-6 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Employees</h1>
           <p className="mt-2 text-base text-slate-500 font-medium">Manage your team members and roles.</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="relative group flex-1 sm:min-w-[300px]">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+          <div className="relative group w-full sm:w-auto sm:flex-1">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition-colors">search</span>
             <input 
               type="text" 
@@ -208,7 +208,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
           
           <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 h-10 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95 hover:-translate-y-0.5 whitespace-nowrap"
+            className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 h-10 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95 hover:-translate-y-0.5 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-lg">add</span>
             <span>Add Employee</span>
@@ -216,16 +216,16 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         </div>
       </div>
 
-      <div className="mb-10 flex flex-col sm:flex-row items-center gap-4 bg-slate-200/30 p-2.5 rounded-2xl border border-slate-200/50 w-fit">
-        <div className="flex items-center gap-2 text-sm text-slate-500 font-semibold px-2">
+      <div className="mb-10 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-white/20 shadow-lg shadow-slate-900/5">
+        <div className="flex items-center gap-2 text-sm text-slate-600 font-semibold min-w-fit">
           <span className="material-symbols-outlined text-xl">filter_list</span>
           <span>Joined Date:</span>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex w-full sm:w-auto items-center gap-3 flex-wrap">
           <div className="w-full sm:w-40">
             <Calendar value={filterStartDate} onChange={setFilterStartDate} />
           </div>
-          <span className="text-slate-400 font-bold">→</span>
+          <span className="text-slate-500 font-bold text-lg flex-shrink-0 hidden sm:inline">→</span>
           <div className="w-full sm:w-40">
             <Calendar value={filterEndDate} onChange={setFilterEndDate} />
           </div>
@@ -245,38 +245,47 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         {currentEmployees.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {currentEmployees.map((emp) => {
-                const empAttendance = attendanceSummary?.find((s: any) => s.id === emp.id);
+                const empAttendance = attendanceSummary?.find((s: any) => s.id === emp.id) || { present: 0, absent: 0, on_leave: 0 };
                 return (
-              <div key={emp.id} className={`group relative flex flex-col items-center rounded-2xl border bg-white p-6 text-center shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 hover:border-slate-200 ${empAttendance ? 'border-emerald-100 animate-pulse' : 'border-slate-100'}`}>
-                  {/* Attendance Days Badge (pulse, top-left) */}
-                  {empAttendance && empAttendance.present > 0 && (
-                    <div className="absolute left-3 top-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 shadow-md animate-pulse">
-                      <span className="material-symbols-outlined text-emerald-600 text-sm animate-bounce">check_circle</span>
-                      <span className="text-xs font-bold text-emerald-700">{empAttendance.present}d</span>
-                    </div>
-                  )}
+              <div key={emp.id} className="group relative flex flex-col items-center rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 z-0 hover:z-10">
+                  {/* Attendance Days Badge (top-left, properly positioned) */}
+                  <div className="absolute left-2 top-2 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1 shadow-md z-10">
+                    <span className="material-symbols-outlined text-emerald-600 text-xs">check_circle</span>
+                    <span className="text-[10px] font-black text-emerald-700">{empAttendance.present || 0}d</span>
+                  </div>
                   {/* Action buttons (eye, delete) */}
-                  <div className="absolute right-3 top-3 flex gap-2">
-                    <button 
-                      onClick={() => setSelectedEmployee(emp)} 
-                      className="text-slate-500 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-blue-50 bg-white shadow-sm"
-                      title="View Profile"
-                    >
-                      <span className="material-symbols-outlined text-lg">visibility</span>
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (emp.id && emp.id.trim() !== '') {
-                          setEmployeeToDelete(emp.id);
-                        } else {
-                          alert('Cannot delete: Employee ID is missing!');
-                        }
-                      }} 
-                      className="text-slate-500 hover:text-rose-600 transition-colors p-2 rounded-lg hover:bg-rose-50 bg-white shadow-sm"
-                      title="Delete Employee"
-                    >
-                      <span className="material-symbols-outlined text-lg">delete</span>
-                    </button>
+                  <div className="absolute right-2 top-2 flex gap-1.5 z-10">
+                    <div className="relative group/action">
+                      <button 
+                        onClick={() => setSelectedEmployee(emp)} 
+                        className="text-slate-500 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50 bg-white shadow-sm"
+                        aria-label="View Profile"
+                      >
+                        <span className="material-symbols-outlined text-sm">visibility</span>
+                      </button>
+                      <div className="pointer-events-none absolute right-0 top-full mt-2 hidden whitespace-nowrap rounded-lg bg-slate-900/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm group-hover/action:block">
+                        View profile
+                      </div>
+                    </div>
+
+                    <div className="relative group/action">
+                      <button 
+                        onClick={() => {
+                          if (emp.id && emp.id.trim() !== '') {
+                            setEmployeeToDelete(emp.id);
+                          } else {
+                            alert('Cannot delete: Employee ID is missing!');
+                          }
+                        }} 
+                        className="text-slate-500 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 bg-white shadow-sm"
+                        aria-label="Delete Employee"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                      <div className="pointer-events-none absolute right-0 top-full mt-2 hidden whitespace-nowrap rounded-lg bg-slate-900/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm group-hover/action:block">
+                        Delete employee
+                      </div>
+                    </div>
                   </div>
 
                   <div className="relative mb-4">
@@ -466,8 +475,8 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         onClose={() => setEmployeeToDelete(null)}
         title="Remove Employee"
       >
-         <div className="py-2">
-            <div className="flex items-center gap-3 mb-4 p-3 bg-rose-50 rounded-lg border border-rose-100">
+         <div className="py-1">
+            <div className="flex items-center gap-3 mb-3 p-3 bg-rose-50 rounded-lg border border-rose-100">
                <div className="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
                   <span className="material-symbols-outlined text-lg">warning</span>
                </div>
@@ -476,7 +485,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                   <p className="text-[10px] text-rose-600 mt-0.5">Permanently deletes employee data.</p>
                </div>
             </div>
-            <p className="text-xs text-slate-600 mb-5">Are you sure you want to delete this employee?</p>
+            <p className="text-xs text-slate-600 mb-3">Are you sure you want to delete this employee?</p>
             
             <div className="flex justify-end gap-2">
                <button 
@@ -504,17 +513,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
           {selectedEmployee && (
               <div className="py-2">
                     <div className="flex items-center gap-3 mb-4 relative">
-                      {/* Attendance Days Badge (pulse, top-left in modal) */}
-                      {attendanceSummary && (() => {
-                      const att = attendanceSummary.find((s: any) => s.id === selectedEmployee.id);
-                      return att && att.present > 0 ? (
-                        <div className="absolute left-0 top-0 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 shadow-md animate-pulse">
-                        <span className="material-symbols-outlined text-emerald-600 text-sm animate-bounce">check_circle</span>
-                        <span className="text-xs font-bold text-emerald-700">{att.present}d</span>
-                        </div>
-                      ) : null;
-                      })()}
-                      <img src={selectedEmployee.avatar} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
+                        <img src={selectedEmployee.avatar} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{selectedEmployee.id}</p>
                         <h3 className="text-base font-bold text-slate-900 truncate">{selectedEmployee.fullName}</h3>
@@ -528,40 +527,43 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                       </div>
                     </div>
                   
-                  <div className="grid grid-cols-2 gap-2.5 mb-3">
+                    <div className="grid grid-cols-2 gap-2.5 mb-3">
                       <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
-                          <p className="text-[10px] text-slate-400 font-medium uppercase">Department</p>
-                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.department}</p>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase">Department</p>
+                        <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.department}</p>
                       </div>
                       <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
-                          <p className="text-[10px] text-slate-400 font-medium uppercase">Location</p>
-                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.location || 'Remote'}</p>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase">Location</p>
+                        <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.location || 'Remote'}</p>
                       </div>
                       <div className="p-2 bg-slate-50 rounded-lg border border-slate-100">
-                          <p className="text-[10px] text-slate-400 font-medium uppercase">Date Joined</p>
-                          <p className="text-xs font-semibold text-slate-900 mt-0.5">{selectedEmployee.joinedDate}</p>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase">Date Joined</p>
+                        <p className="text-xs font-semibold text-slate-900 mt-0.5">{selectedEmployee.joinedDate}</p>
                       </div>
                       <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
-                          <p className="text-[10px] text-slate-400 font-medium uppercase">Email</p>
-                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.email}</p>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase">Email</p>
+                        <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.email}</p>
                       </div>
-                      {attendanceSummary && attendanceSummary.find((s: any) => s.id === selectedEmployee.id) && (
-                        <>
-                          <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
-                              <p className="text-[10px] text-emerald-600 font-medium uppercase">Present</p>
-                              <p className="text-lg font-bold text-emerald-700 mt-0.5">{attendanceSummary.find((s: any) => s.id === selectedEmployee.id).present}</p>
-                          </div>
-                          <div className="p-2 bg-rose-50 rounded-lg border border-rose-200">
-                              <p className="text-[10px] text-rose-600 font-medium uppercase">Absent</p>
-                              <p className="text-lg font-bold text-rose-700 mt-0.5">{attendanceSummary.find((s: any) => s.id === selectedEmployee.id).absent}</p>
-                          </div>
-                          <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
-                              <p className="text-[10px] text-blue-600 font-medium uppercase">On Leave</p>
-                              <p className="text-lg font-bold text-blue-700 mt-0.5">{attendanceSummary.find((s: any) => s.id === selectedEmployee.id).on_leave}</p>
-                          </div>
-                        </>
-                      )}
-                  </div>
+                      {/* Always show attendance cards, even if all are zero */}
+                      {(() => {
+                      let att = attendanceSummary && attendanceSummary.find((s: any) => s.id === selectedEmployee.id);
+                      if (!att) att = { present: 0, absent: 0, on_leave: 0 };
+                      return <>
+                        <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                          <p className="text-[10px] text-emerald-600 font-medium uppercase">Present</p>
+                          <p className="text-lg font-bold text-emerald-700 mt-0.5">{att.present}</p>
+                        </div>
+                        <div className="p-2 bg-rose-50 rounded-lg border border-rose-200">
+                          <p className="text-[10px] text-rose-600 font-medium uppercase">Absent</p>
+                          <p className="text-lg font-bold text-rose-700 mt-0.5">{att.absent}</p>
+                        </div>
+                        <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-[10px] text-blue-600 font-medium uppercase">On Leave</p>
+                          <p className="text-lg font-bold text-blue-700 mt-0.5">{att.on_leave}</p>
+                        </div>
+                      </>;
+                      })()}
+                    </div>
 
                   <div className="flex justify-end">
                       <button 

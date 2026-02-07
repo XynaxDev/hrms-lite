@@ -126,7 +126,8 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50 selection:bg-slate-900 selection:text-white">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-slate-50 selection:bg-slate-900 selection:text-white md:flex">
+      {/* Sidebar - Desktop: static in flex, Mobile: fixed overlay (doesn't take space) */}
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={(tab) => { setActiveTab(tab); setIsMobileSidebarOpen(false); }} 
@@ -134,31 +135,44 @@ const App: React.FC = () => {
         isOpen={isMobileSidebarOpen}
         onClose={() => setIsMobileSidebarOpen(false)}
       />
+
+      {/* Mobile backdrop overlay - appears behind sidebar */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/40 md:hidden" 
+          onClick={() => setIsMobileSidebarOpen(false)} 
+        />
+      )}
       
-      <main className="flex h-full flex-1 flex-col overflow-y-auto relative z-10 custom-scrollbar md:pl-4">
-        <header className="sticky top-4 z-30 flex h-14 items-center justify-between border border-slate-200/20 bg-white/50 px-4 backdrop-blur-xl md:hidden mx-4 rounded-xl shadow-sm">
-          <div className="flex items-center gap-2" onClick={handleGoHome}>
-            <span className="material-symbols-outlined text-slate-900">blur_on</span>
-            <span className="font-bold text-slate-900">HRMS Lite</span>
+      {/* Main content area - full width on mobile, flex-1 on desktop */}
+      <div className="w-full h-full flex flex-col min-w-0 overflow-hidden md:flex-1">
+        {/* Mobile navbar - only visible on mobile */}
+        <div className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
+              <span className="material-symbols-outlined text-xl">blur_on</span>
+            </div>
+            <span className="text-sm font-black uppercase tracking-[0.15em] text-slate-900">HRMS Lite</span>
           </div>
-          <button className="text-slate-600" onClick={() => setIsMobileSidebarOpen(true)} aria-label="Open menu">
-            <span className="material-symbols-outlined">menu</span>
+          <button 
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors active:scale-95"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <span className="material-symbols-outlined text-[22px]">menu</span>
           </button>
-        </header>
-
-        {/* Mobile overlay when sidebar open */}
-        {isMobileSidebarOpen && (
-          <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setIsMobileSidebarOpen(false)} />
-        )}
-
-        <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-10 flex-1">
-          {renderContent()}
         </div>
-        
-        <footer className="mt-auto px-10 py-10 border-t border-slate-200 bg-white">
-           <div className="mx-auto w-full max-w-[1400px] flex flex-col md:flex-row justify-between items-center gap-8">
+
+        {/* Scrollable main content */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+          <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
+            {renderContent()}
+          </div>
+          
+          <footer className="mt-auto px-10 py-10 border-t border-slate-200 bg-white">
+            <div className="mx-auto w-full max-w-[1400px] flex flex-col md:flex-row justify-between items-center gap-8">
               <div className="flex flex-col items-center md:items-start gap-2">
-                <div className="flex items-center gap-2 text-slate-900">
+                <div className="flex items-center gap-2 text-slate-900 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleGoHome}>
                   <span className="material-symbols-outlined text-2xl font-black">blur_on</span>
                   <span className="text-sm font-black uppercase tracking-[0.2em]">HRMS Lite</span>
                 </div>
@@ -169,25 +183,26 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex flex-col items-center md:items-end gap-4">
-                  <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-full border border-slate-100 w-fit">
-                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                      <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Network Stable</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-6">
-                      <a href="mailto:akashkumar.cs27@gmail.com" className="text-slate-400 hover:text-slate-900 transition-all hover:scale-110 flex items-center justify-center h-9 w-9 rounded-full bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md">
-                          <span className="material-symbols-outlined text-[20px]">mail</span>
-                      </a>
-                      <a href="https://github.com/XynaxDev" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-900 transition-all hover:scale-110 flex items-center justify-center h-9 w-9 rounded-full bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md">
-                          <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
-                            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
-                          </svg>
-                      </a>
-                  </div>
+                <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-full border border-slate-100 w-fit">
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Network Stable</span>
+                </div>
+                
+                <div className="flex items-center gap-6">
+                  <a href="mailto:akashkumar.cs27@gmail.com" className="text-slate-400 hover:text-slate-900 transition-all hover:scale-110 flex items-center justify-center h-9 w-9 rounded-full bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md">
+                    <span className="material-symbols-outlined text-[20px]">mail</span>
+                  </a>
+                  <a href="https://github.com/XynaxDev" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-slate-900 transition-all hover:scale-110 flex items-center justify-center h-9 w-9 rounded-full bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md">
+                    <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
+                      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                    </svg>
+                  </a>
+                </div>
               </div>
-           </div>
-        </footer>
-      </main>
+            </div>
+          </footer>
+        </main>
+      </div>
 
       <ChatBot />
       {toast && (

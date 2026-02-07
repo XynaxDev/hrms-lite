@@ -31,17 +31,18 @@ const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, description, ch
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-auto">
       {/* Backdrop - covers entire screen, but does NOT highlight sidebar or chat bubble */}
       <div 
         className="absolute inset-0 bg-black/30 backdrop-blur-none"
         onClick={onClose}
+        style={{ pointerEvents: 'auto' }}
       />
-      {/* Dialog Container - constrained width */}
+      {/* Dialog Container - constrained width, always topmost */}
       <div className="relative z-10 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
         {/* Header */}
         {(title || description) && (
-          <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 rounded-t-2xl">
+          <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-3 rounded-t-2xl">
             <div className="flex items-start justify-between">
               <div>
                 {title && <h2 className="text-lg font-bold text-slate-900">{title}</h2>}
@@ -58,7 +59,7 @@ const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, description, ch
         )}
         
         {/* Content */}
-        <div className="px-6 py-4">
+        <div className="px-5 py-3">
           {children}
         </div>
       </div>

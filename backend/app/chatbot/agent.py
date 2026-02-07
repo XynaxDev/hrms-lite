@@ -53,7 +53,7 @@ def create_chat_agent():
         openai_api_key=settings.OPENROUTER_API_KEY,
         openai_api_base=settings.OPENROUTER_BASE_URL,
         temperature=0.7,
-        max_tokens=1024,
+        max_tokens=2048,
     )
 
     # Create the prompt template
@@ -73,7 +73,7 @@ def create_chat_agent():
     agent_executor = AgentExecutor(
         agent=agent,
         tools=HRMS_TOOLS,
-        verbose=settings.DEBUG,
+        verbose=False,
         handle_parsing_errors=True,
         max_iterations=5,
     )
@@ -128,9 +128,11 @@ async def get_chat_response(
         return response, tools_called
 
     except Exception as e:
-        error_msg = (
-            f"I'm having trouble connecting to my systems right now. Error: {str(e)}"
-        )
         if settings.DEBUG:
             print(f"Chatbot Error: {e}")
-        return error_msg, []
+        return (
+            "I couldn't complete that request with the available data tools. "
+            "Try rephrasing (for example: 'Show active employees' or 'Employees in Engineering'), "
+            "or specify an employee name/ID.",
+            [],
+        )

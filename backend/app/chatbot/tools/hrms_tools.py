@@ -8,6 +8,7 @@ from langchain.tools import tool
 from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal
+from app.models.employee import DepartmentEnum, StatusEnum
 from app.services.employee_service import EmployeeService
 from app.services.attendance_service import AttendanceService
 from app.services.activity_service import ActivityService
@@ -16,6 +17,18 @@ from app.services.activity_service import ActivityService
 def get_db_session() -> Session:
     """Get a database session for tool operations."""
     return SessionLocal()
+
+
+def _normalize_department(department: str) -> str | None:
+    if not department:
+        return None
+    d = department.strip()
+    if d.lower() in {"all", "any", "*"}:
+        return None
+    for item in DepartmentEnum:
+        if d.lower() == item.value.lower() or d.lower() == item.name.lower():
+            return item.value
+    return d
 
 
 @tool
@@ -90,14 +103,25 @@ def get_employees_by_department(department: str) -> str:
     """
     db = get_db_session()
     try:
-        employees = EmployeeService.get_employees_by_department(db, department)
+        normalized_department = _normalize_department(department)
+        if normalized_department is None:
+            employees, total = EmployeeService.get_all_employees(db, limit=50)
+            if not employees:
+                return "No employees found."
+            employee_list = "\n".join([f"- {emp.full_name} ({emp.role})" for emp in employees])
+            more = "" if total <= len(employees) else f"\n... and {total - len(employees)} more"
+            return f"Employees (showing {len(employees)} of {total}):\n{employee_list}{more}"
+
+        employees = EmployeeService.get_employees_by_department(db, normalized_department)
         if not employees:
-            return f"No employees found in the {department} department."
+            return f"No employees found in the {normalized_department} department."
 
         employee_list = "\n".join(
             [f"- {emp.full_name} ({emp.role})" for emp in employees]
         )
-        return f"Employees in {department} department ({len(employees)} total):\n{employee_list}"
+        return f"Employees in {normalized_department} department ({len(employees)} total):\n{employee_list}"
+    except Exception:
+        return "I couldn't apply that department filter. Please use a valid department (Engineering, Design, Marketing, HR, Finance) or say 'all departments'."
     finally:
         db.close()
 
@@ -179,6 +203,19 @@ def get_employee_details(identifier: str) -> str:
     """
     db = get_db_session()
     try:
+        if identifier and identifier.strip().lower() in {s.value.lower() for s in StatusEnum}:
+            status = next(
+                (s.value for s in StatusEnum if s.value.lower() == identifier.strip().lower()),
+                identifier.strip(),
+            )
+            employees = EmployeeService.get_employees_by_status(db, status)
+            if not employees:
+                return f"No employees found with status: {status}"
+            preview = employees[:10]
+            employee_list = "\n".join([f"- {emp.full_name} ({emp.department.value}, {emp.role})" for emp in preview])
+            more = "" if len(employees) <= len(preview) else f"\n... and {len(employees) - len(preview)} more"
+            return f"Employees with status '{status}' ({len(employees)} total):\n{employee_list}{more}"
+
         # Try to find by ID first
         employee = EmployeeService.get_employee_by_id(db, identifier)
 
@@ -199,6 +236,8 @@ def get_employee_details(identifier: str) -> str:
 - Location: {employee.location or "Not specified"}
 - Joined: {employee.joined_date}
 - Check-in Time: {employee.check_in_time or "Not checked in"}"""
+    except Exception:
+        return "I couldn't fetch employee details for that input. Try an employee ID, email, or full name."
     finally:
         db.close()
 

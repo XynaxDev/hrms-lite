@@ -71,9 +71,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
       </motion.nav>
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        {/* Subtle background glow for professional depth */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[500px] bg-blue-50/40 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+      <div className="relative overflow-hidden bg-gradient-to-b from-white via-slate-50 to-white isolate">
+        {/* Blurry animated background elements */}
+        <motion.div 
+          animate={{ x: [0, 30, 0], y: [0, 20, 0], scale: [1, 1.05, 1] }}
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -z-10 top-[8%] left-[4%] w-[520px] h-[520px] rounded-full bg-blue-200/70 blur-[90px] pointer-events-none mix-blend-multiply"
+        />
+        <motion.div 
+          animate={{ x: [0, -25, 0], y: [0, -15, 0], scale: [1, 1.08, 1] }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+          className="absolute -z-10 top-[22%] right-[6%] w-[480px] h-[480px] rounded-full bg-indigo-200/65 blur-[85px] pointer-events-none mix-blend-multiply"
+        />
+        <motion.div 
+          animate={{ x: [0, 20, 0], y: [0, -25, 0], scale: [1, 1.03, 1] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute -z-10 bottom-[18%] left-[12%] w-[420px] h-[420px] rounded-full bg-purple-200/55 blur-[80px] pointer-events-none mix-blend-multiply"
+        />
         
         <div className="relative z-10 mx-auto max-w-7xl px-6 pt-32 pb-20 text-center lg:pt-48">
           <motion.div 
@@ -90,17 +104,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-5xl text-6xl font-black tracking-tight text-slate-900 sm:text-8xl lg:text-9xl mb-8 leading-[0.95]"
+              className="mx-auto max-w-5xl text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl mb-8 leading-[0.95]"
           >
             HRMS evolved for <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-600 via-indigo-700 to-slate-900">intelligent teams.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600">intelligent teams.</span>
           </motion.h1>
           
           <motion.p 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="mx-auto max-w-2xl text-lg sm:text-xl text-slate-500 mb-12 leading-relaxed font-medium tracking-tight"
+              className="mx-auto max-w-2xl text-lg sm:text-xl text-slate-600 mb-12 leading-relaxed font-medium tracking-tight"
           >
              Redefining workforce management by blending modular design with advanced intelligence. 
              Automate logs, manage people, and scale your culture effortlessly.
@@ -371,7 +385,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent"></div>
           
-          <div className="mx-auto max-w-7xl px-6 relative z-10">
+          <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-10 relative z-10">
              <div className="text-center mb-24 relative z-20">
                 <h2 className="text-sm font-bold text-blue-400 tracking-[0.3em] uppercase mb-4">Core Ecosystem</h2>
                 <h3 className="text-4xl font-bold">Interconnected Stability</h3>

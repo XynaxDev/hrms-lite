@@ -56,7 +56,7 @@ const Select: React.FC<SelectProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white text-slate-950 shadow-md animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+        <div className="absolute z-[100] mt-1 max-h-60 w-full min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white text-slate-950 shadow-md animate-in fade-in zoom-in-95 duration-200 flex flex-col">
           {isSearchable && (
             <div className="border-b border-slate-200 p-2">
               <div className="relative">

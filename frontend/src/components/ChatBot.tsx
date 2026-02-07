@@ -44,23 +44,24 @@ const ChatBot: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-32 right-8 z-50 flex flex-col items-end gap-5 font-sans">
+    <div className="fixed bottom-32 right-8 z-[40] flex flex-col items-end gap-5 font-sans">
       <AnimatePresence>
         {isOpen && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="w-[380px] h-[550px] glass-panel rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border-white/80 flex flex-col overflow-hidden mb-2"
+            className="w-[380px] h-[550px] rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/80 flex flex-col overflow-hidden mb-2"
+            style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
           >
             {/* Header */}
             <div className="p-6 border-b border-white/20 bg-white/40 backdrop-blur-md flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="h-10 w-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg transform rotate-3">
+                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center shadow-lg border border-white/20">
                     <span className="material-symbols-outlined text-white text-xl">smart_toy</span>
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white"></span>
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white animate-pulse"></span>
                 </div>
                 <div>
                   <h4 className="text-[15px] font-bold text-slate-900 tracking-tight">HRMS AI Assistant</h4>
@@ -158,18 +159,29 @@ const ChatBot: React.FC = () => {
       
       {/* Toggle Button */}
       <motion.button 
-        whileHover={{ scale: 1.05 }}
+        whileHover={{ scale: 1.05, y: -2 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="h-16 w-16 rounded-[1.5rem] bg-slate-900 text-white shadow-2xl flex items-center justify-center group relative overflow-hidden"
+        className="h-14 w-14 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-xl flex items-center justify-center group relative overflow-hidden border border-slate-700/50"
       >
-        <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 to-slate-800 group-hover:opacity-90 transition-opacity"></div>
-        <span className="material-symbols-outlined text-3xl group-hover:rotate-12 transition-transform relative z-10">
-          {isOpen ? 'close' : 'chat_bubble'}
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        
+        {/* Shimmer effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+        
+        {/* Icon */}
+        <span className="material-symbols-outlined text-2xl transition-all duration-300 relative z-10 group-hover:scale-110">
+          {isOpen ? 'close' : 'support_agent'}
         </span>
-        {!isOpen && (
-          <span className="absolute top-3 right-3 h-3 w-3 bg-emerald-500 rounded-full border-2 border-slate-900 z-20"></span>
-        )}
+        
+        {/* Tooltip */}
+        <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-3 rounded-xl bg-white/95 px-3.5 py-2 text-[11px] font-semibold text-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-[9999] shadow-xl shadow-slate-900/10 ring-1 ring-slate-200 backdrop-blur-sm">
+          {isOpen ? 'Close AI Assistant' : 'Open AI Assistant'}
+        </div>
+        
+        {/* Subtle glow effect on hover */}
+        <div className="absolute inset-0 rounded-full bg-slate-700/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
       </motion.button>
 
       <style dangerouslySetInnerHTML={{ __html: `

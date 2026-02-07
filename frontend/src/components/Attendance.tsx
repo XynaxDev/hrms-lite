@@ -120,7 +120,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+          <div key={stat.label} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow z-0 hover:z-10">
              <div>
                 <span className={`text-3xl font-bold ${stat.color} block tracking-tighter`}>{stat.value}</span>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">{stat.label}</span>
@@ -239,9 +239,13 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                 <div className="space-y-2">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Select Employee</label>
                     {(() => {
+                        // Get employee IDs that already have attendance for this date
+                        const markedEmployeeIds = records.map(r => r.employeeId);
+                        
                         const filtered = employees.filter(e => 
-                            e.fullName.toLowerCase().includes(markSearch.toLowerCase()) || 
-                            e.id.toLowerCase().includes(markSearch.toLowerCase())
+                            !markedEmployeeIds.includes(e.id) && // Exclude already marked employees
+                            (e.fullName.toLowerCase().includes(markSearch.toLowerCase()) || 
+                            e.id.toLowerCase().includes(markSearch.toLowerCase()))
                         );
                         const selectedOptions = [
                             { value: '', label: 'Select a member...' },
@@ -258,7 +262,10 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                                     isSearchable={true}
                                 />
                                 {markSearch && filtered.length === 0 && (
-                                    <p className="text-xs text-slate-400 mt-2 pl-1">No employees found matching "{markSearch}"</p>
+                                    <p className="text-xs text-slate-400 mt-2 pl-1">No available employees found matching "{markSearch}"</p>
+                                )}
+                                {filtered.length === 0 && !markSearch && (
+                                    <p className="text-xs text-slate-500 mt-2 pl-1">All employees have been marked for today</p>
                                 )}
                             </div>
                         );
