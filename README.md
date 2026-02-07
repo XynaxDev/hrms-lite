@@ -1,19 +1,10 @@
-# ```HRMS Lite | Enterprise Intelligent Workforce Management```
+# HRMS Lite | Enterprise Intelligent Workforce Management
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61dafb)
-![Backend](https://img.shields.io/badge/Backend-FastAPI-009688)
-![Database](https://img.shields.io/badge/Database-Supabase%20(PostgreSQL)-3ECF8E)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB)
-![Node](https://img.shields.io/badge/Node-18%2B-339933)
-![Backend: Railway](https://img.shields.io/badge/Backend-Railway-7B3FE4)
-![Frontend: Vercel](https://img.shields.io/badge/Frontend-Vercel-000000)
-![Status](https://img.shields.io/badge/Status-Live-brightgreen)
-![AI](https://img.shields.io/badge/AI-OpenRouter-8A2BE2)
 
 HRMS Lite is a state-of-the-art, full-stack Human Resource Management System designed for modern, high-growth teams. It combines a premium React based user interface with a FastAPI backend and intelligent data querying powered by **OpenRouter**.
 
-## ```✨ Core Features```
+## Core Features
 
 - **Intelligent HR Assistant**
   - Production-style conversational UI with chat history and responsive layout.
@@ -35,9 +26,7 @@ HRMS Lite is a state-of-the-art, full-stack Human Resource Management System des
   - FastAPI + SQLAlchemy + Pydantic.
   - Works with hosted PostgreSQL (e.g. Supabase).
 
----
-
-## ```🏗️ Project Architecture```
+## Project Architecture
 The system is split into two main modules:
 
 1.  **Frontend (`/frontend`)**: 
@@ -49,9 +38,7 @@ The system is split into two main modules:
     - **Intelligence**: LangChain + OpenRouter
     - **Database**: PostgreSQL + SQLAlchemy
 
----
-
-## ```🔒 Security & Isolation (MVP)```
+## Security & Isolation (MVP)
 This project is currently running **without full authentication** by design (demo/MVP mode).
 
 - **Device / PC Isolation (Session-Scoped)**
@@ -82,15 +69,15 @@ DEMO_ISOLATION_ENABLED=true
 DEMO_ISOLATION_MODE=device  # device | ip
 ```
 
-## ```🚀 Getting Started```
+## Getting Started
 
-### ```Prerequisites```
+### Prerequisites
 
 - Python 3.12+
 - Node.js 18+
 - PostgreSQL (local or hosted)
 
-### ```Backend (FastAPI)```
+### Backend (FastAPI)
 
 From the repository root:
 
@@ -146,7 +133,7 @@ The API should be available at:
 - `http://localhost:8000`
 - Swagger docs: `http://localhost:8000/docs`
 
-### ```Frontend (React + Vite)```
+### Frontend (React + Vite)
 
 From the repository root:
 
@@ -172,7 +159,7 @@ Open:
 
 - `http://localhost:5173`
 
-### ```Production build checks```
+### Production build checks
 
 Frontend typecheck + build:
 
@@ -187,9 +174,9 @@ Backend syntax check (optional):
 python -m compileall backend\app
 ```
 
-## ```🌐 Deployment```
+## Deployment
 
-### ```Backend (Railway)```
+### Backend (Railway)
 1. Push the repository to GitHub.
 2. Create a new project in Railway and connect your repo.
 3. Configure the service:
@@ -208,7 +195,7 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
    - `API_KEY` (must match frontend `VITE_API_KEY`)
 5. Deploy and copy your public Railway service URL.
 
-### ```Frontend (Vercel)```
+### Frontend (Vercel)
 1. Create a new project on Vercel.
 2. Import your GitHub repo.
 3. Set:
@@ -223,21 +210,21 @@ Required frontend env vars:
 - `VITE_API_URL`
 - `VITE_API_KEY`
 
-## ```Requirements```
+## Submission Requirements
 
-### ```✅ Checklist```
-- [ ] **Live Application URL** - Deployed frontend on Vercel
-- [ ] **GitHub Repository Link** - Public repository with all source code
-- [ ] **README.md** containing:
+### Checklist
+- [x] **Live Application URL**
+- [x] **GitHub Repository Link**
+- [x] **README.md** containing:
   - [x] Project overview
   - [x] Tech stack used  
   - [x] Steps to run the project locally
   - [x] Assumptions or limitations
 
 
-## ```Limitations & Assumptions```
+## Limitations & Assumptions
 
-### ```Current Limitations (Demo Mode)```
+### Current Limitations (Demo Mode)
 1. **No Authentication System**
    - Uses demo device isolation instead of proper user authentication
    - Data is scoped per device/browser session via `X-Device-Id` header
@@ -258,13 +245,13 @@ Required frontend env vars:
    - No comprehensive audit logs for compliance
    - Limited change tracking capabilities
 
-### ```Assumptions```
+### Assumptions
 - Demo environment with trusted users
 - Small to medium team size (< 500 employees)
 - Single geographic region (no timezone complexity)
 - Basic HR workflows without complex compliance requirements
 
-### ```Roadmap for Production```
+### Roadmap for Production
 - Implement proper authentication (JWT/OAuth)
 - Add role-based access control
 - Multi-tenant architecture with company isolation
@@ -272,11 +259,8 @@ Required frontend env vars:
 - Advanced compliance features (GDPR, etc.)
 
 
-## ```License```
+## License
 Distributed under the MIT License. See `LICENSE` for more information.
 
----
-
-**Built with ❤️ by Akash for Modern Operations.**
-> If you find this project useful, please consider giving it a star ⭐ on GitHub.
+**Built by Akash for Modern Operations.**
 
