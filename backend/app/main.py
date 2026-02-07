@@ -23,13 +23,16 @@ settings = get_settings()
 limiter = Limiter(key_func=get_remote_address)
 
 # Initialize FastAPI app
+docs_url = "/docs" if settings.DEBUG else None
+redoc_url = "/redoc" if settings.DEBUG else None
+
 app = FastAPI(
     title="HRMS Lite API",
-    description="API for Human Resource Management System with AI Assistant",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=docs_url,
+    redoc_url=redoc_url,
 )
+
 
 # Add Rate Limiting
 app.state.limiter = limiter
@@ -89,12 +92,11 @@ app.include_router(api_router)
 
 @app.get("/")
 async def root():
-    """Root endpoint to verify API status."""
     return {
         "name": "HRMS Lite API",
         "version": "1.0.0",
         "status": "online",
-        "docs": "/docs",
+        "docs": "/docs" if settings.DEBUG else None,
     }
 
 
