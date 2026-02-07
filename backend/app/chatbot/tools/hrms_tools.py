@@ -165,7 +165,7 @@ def get_absent_employees_today() -> str:
         absent_employees = AttendanceService.get_absent_employees(db, today)
         
         if not absent_employees:
-            return "All active employees have checked in today. No one is absent!"
+            return "No employees are currently absent. All active employees either have attendance marked or are on leave."
 
         employee_list = "\n".join(
             [

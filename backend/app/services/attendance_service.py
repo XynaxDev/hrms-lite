@@ -223,8 +223,8 @@ class AttendanceService:
         if not date_str:
             date_str = datetime.now().strftime("%Y-%m-%d")
         
-        # Get all active employees
-        all_employees = db.query(Employee).filter(Employee.status == StatusEnum.ACTIVE).all()
+        # Get ALL employees (not just active) to show complete picture
+        all_employees = db.query(Employee).all()
         
         # Get today's attendance records
         today_attendance = db.query(Attendance).filter(Attendance.date == date_str).all()
@@ -235,16 +235,21 @@ class AttendanceService:
         # Find employees who are absent (no record) or marked as absent
         absent_employees = []
         for emp in all_employees:
+            # Skip terminated employees unless they have attendance marked as absent
+            if emp.status == StatusEnum.TERMINATED and emp.id not in marked_employee_ids:
+                continue
+                
             # Check if employee has attendance record for today
             if emp.id not in marked_employee_ids:
-                # No attendance record = absent
-                absent_employees.append({
-                    "id": emp.id,
-                    "name": emp.full_name,
-                    "department": emp.department.value,
-                    "role": emp.role,
-                    "reason": "No attendance marked"
-                })
+                # No attendance record = absent (only for active/on-leave employees)
+                if emp.status in [StatusEnum.ACTIVE, StatusEnum.ON_LEAVE]:
+                    absent_employees.append({
+                        "id": emp.id,
+                        "name": emp.full_name,
+                        "department": emp.department.value,
+                        "role": emp.role,
+                        "reason": "No attendance marked"
+                    })
             else:
                 # Check if marked as absent
                 att_record = next((att for att in today_attendance if att.employee_id == emp.id), None)
