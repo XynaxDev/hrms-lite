@@ -4,6 +4,7 @@ uvicorn[standard]==0.27.1
 python-multipart==0.0.9
 pydantic==2.6.1
 pydantic-settings==2.1.0
+pydantic-core==2.16.2
 
 # Database
 sqlalchemy==2.0.25
@@ -11,10 +12,12 @@ asyncpg==0.29.0
 psycopg2-binary==2.9.9
 alembic==1.13.1
 
-# LangChain + OpenRouter
-langchain==0.1.9
-langchain-openai==0.0.6
-langchain-community==0.0.24
+# LangChain + OpenRouter (Pydantic v2 compatible)
+langchain==0.2.16
+langchain-openai==0.1.25
+langchain-community==0.2.16
+langchain-core==0.2.43
+langsmith==0.1.125
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
