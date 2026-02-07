@@ -43,30 +43,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl"
+        className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/50 bg-white/55 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/40"
       >
-        <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center text-white shadow-lg shadow-slate-900/10">
-                    <span className="material-symbols-outlined text-lg">blur_on</span>
-                </div>
-                <span className="text-lg font-bold text-slate-900 tracking-tight">HRMS Lite</span>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center gap-4">
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
+              <span className="material-symbols-outlined text-xl">blur_on</span>
             </div>
-            
-            <div className="hidden md:flex items-center gap-8">
-                <button onClick={() => scrollToSection('about')} className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">About</button>
-                <button onClick={() => scrollToSection('features')} className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Features</button>
-                <button onClick={() => scrollToSection('tech')} className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Tech Stack</button>
+            <span className="text-sm font-black uppercase tracking-[0.15em] text-slate-900">HRMS LITE</span>
+          </div>
+
+          <div className="hidden md:flex flex-1 items-center justify-end gap-3">
+            <div className="flex items-center gap-2 rounded-full border border-white/40 bg-gradient-to-b from-white/30 to-white/10 px-2 py-1 backdrop-blur-2xl shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/5">
+              <button onClick={() => scrollToSection('about')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">About</button>
+              <button onClick={() => scrollToSection('features')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Features</button>
+              <button onClick={() => scrollToSection('tech')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Tech Stack</button>
             </div>
 
-            <div className="flex items-center gap-4">
-                <button 
-                onClick={onEnter}
-                className="hidden sm:block rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95"
-                >
-                Launch App
-                </button>
-            </div>
+            <button 
+              onClick={onEnter}
+              className="hidden sm:block rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95"
+            >
+              Launch App
+            </button>
+          </div>
         </div>
       </motion.nav>
 
