@@ -3,11 +3,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61dafb)
 ![Backend](https://img.shields.io/badge/Backend-FastAPI-009688)
-![Database](https://img.shields.io/badge/Database-PostgreSQL-336791)
+![Database](https://img.shields.io/badge/Database-Supabase%20(PostgreSQL)-3ECF8E)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB)
 ![Node](https://img.shields.io/badge/Node-18%2B-339933)
-![Backend: Render](https://img.shields.io/badge/Backend-Render-46E3B7)
+![Backend: Railway](https://img.shields.io/badge/Backend-Railway-7B3FE4)
 ![Frontend: Vercel](https://img.shields.io/badge/Frontend-Vercel-000000)
+![Status](https://img.shields.io/badge/Status-Live-brightgreen)
 ![AI](https://img.shields.io/badge/AI-OpenRouter-8A2BE2)
 
 HRMS Lite is a state-of-the-art, full-stack Human Resource Management System designed for modern, high-growth teams. It combines a premium React-based user interface with a FastAPI backend and intelligent data querying powered by **OpenRouter**.
@@ -15,8 +16,11 @@ HRMS Lite is a state-of-the-art, full-stack Human Resource Management System des
 ## ✨ Core Features
 
 - **Intelligent HR Assistant**
-  - Natural language queries over employees and attendance.
-  - Guardrails to avoid leaking raw backend/SQL errors.
+  - Production-style conversational UI with chat history and responsive layout.
+  - Natural language questions over employees, attendance, and workforce metrics.
+  - Network-hardened requests (timeouts + clearer error surfacing).
+  - Guardrails to avoid leaking raw backend/SQL errors into the UI.
+  - Designed for executive summaries and actionable insights (e.g., leave trends, headcount signals).
 - **Employee Management**
   - Add, edit, delete employees.
   - Department and status filtering.
@@ -42,11 +46,43 @@ The system is split into two main modules:
     - **Styling**: Tailwind CSS (Executive Aesthetic)
     - **Animations**: Framer Motion
 2.  **Backend (`/backend`)**:
-    - **Framework**: FastAPI (Python 3.10+)
+    - **Framework**: FastAPI (Python 3.12+)
     - **Intelligence**: LangChain + OpenRouter
     - **Database**: PostgreSQL + SQLAlchemy
 
 ---
+
+## 🔒 Security & Isolation (MVP)
+
+This project is currently running **without full authentication** by design (demo/MVP mode).
+
+- **Device / PC Isolation (Session-Scoped)**
+  - Access is treated as **device-scoped** (a single browser/device session).
+  - Intended to keep each demo environment isolated per device during reviews.
+  - This is **not a replacement for authentication** and should not be considered production-grade security.
+
+- **Roadmap**
+  - Add proper **Auth + Roles** and Supabase **Row Level Security (RLS)** for real multi-user and multi-company isolation.
+
+### Demo Isolation (Device / IP)
+
+To keep demo data separated across different laptops/browsers **without login**, the backend can scope all reads/writes by a demo key.
+
+- **Device mode (recommended for demos)**
+  - Frontend generates a persistent `device_id` (stored in `localStorage`).
+  - Every API request includes `X-Device-Id`.
+  - Backend stores/filter records by `device_id`.
+
+- **IP mode (optional)**
+  - Backend scopes requests by client IP (`X-Forwarded-For` / remote address).
+  - Useful for quick staging demos, but less reliable on shared networks/VPNs.
+
+Backend env vars:
+
+```env
+DEMO_ISOLATION_ENABLED=true
+DEMO_ISOLATION_MODE=device  # device | ip
+```
 
 ## 🚀 Getting Started
 
@@ -157,26 +193,24 @@ python -m compileall backend\app
 
 ## 🌐 Deployment
 
-### Backend (Render)
-1. Create a `backend/Procfile` (if not already present):
-
-```
-web: gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
-```
-
-2. Push the repository to GitHub.
-3. On Render:
-   - **New +** → **Web Service**
-   - Connect your GitHub repo
+### Backend (Railway)
+1. Push the repository to GitHub.
+2. Create a new project in Railway and connect your repo.
+3. Configure the service:
    - **Root Directory**: `backend`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app`
-4. Set environment variables (Render → Service → Environment):
-   - `DATABASE_URL`
+   - **Start Command**:
+
+```
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
+```
+
+4. Set environment variables in Railway:
+   - `DATABASE_URL` (Supabase Postgres connection string)
    - `OPENROUTER_API_KEY`
    - `OPENROUTER_BASE_URL` = `https://openrouter.ai/api/v1`
    - `ALLOWED_ORIGINS` = `https://<your-vercel-app>.vercel.app`
    - `API_KEY` (must match frontend `VITE_API_KEY`)
+5. Deploy and copy your public Railway service URL.
 
 ### Frontend (Vercel)
 1. Create a new project on Vercel.
@@ -185,7 +219,7 @@ web: gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
    - **Framework Preset**: Vite
    - **Root Directory**: `frontend`
 4. Add environment variables:
-   - `VITE_API_URL` = `https://<your-render-backend>/api/v1`
+   - `VITE_API_URL` = `https://<your-railway-backend>/api/v1`
    - `VITE_API_KEY` = same value as backend `API_KEY`
 
 Required frontend env vars:
