@@ -314,6 +314,67 @@ class AttendanceService:
         return absent_employees
 
     @staticmethod
+    def get_absent_employees_scoped(
+        db: Session, date_str: str = None, scope_key: Optional[str] = None
+    ) -> List[dict]:
+        from app.models.employee import StatusEnum
+
+        if not date_str:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+
+        all_employees, _ = AttendanceService._get_employees_for_absent_check(db, scope_key)
+        today_attendance = AttendanceService._get_attendance_for_absent_check(db, date_str, scope_key)
+
+        marked_employee_ids = {att.employee_id for att in today_attendance}
+
+        absent_employees: List[dict] = []
+        for emp in all_employees:
+            if emp.status == StatusEnum.TERMINATED and emp.id not in marked_employee_ids:
+                continue
+
+            if emp.id not in marked_employee_ids:
+                if emp.status in [StatusEnum.ACTIVE, StatusEnum.ON_LEAVE]:
+                    absent_employees.append(
+                        {
+                            "id": emp.id,
+                            "name": emp.full_name,
+                            "department": emp.department.value,
+                            "role": emp.role,
+                            "reason": "No attendance marked",
+                        }
+                    )
+            else:
+                att_record = next(
+                    (att for att in today_attendance if att.employee_id == emp.id), None
+                )
+                if att_record and att_record.status == AttendanceStatusEnum.ABSENT:
+                    absent_employees.append(
+                        {
+                            "id": emp.id,
+                            "name": emp.full_name,
+                            "department": emp.department.value,
+                            "role": emp.role,
+                            "reason": "Marked as Absent",
+                        }
+                    )
+
+        return absent_employees
+
+    @staticmethod
+    def _get_employees_for_absent_check(db: Session, scope_key: Optional[str]):
+        q = db.query(Employee)
+        if scope_key:
+            q = q.filter(Employee.device_id == scope_key)
+        return q.all(), q.count()
+
+    @staticmethod
+    def _get_attendance_for_absent_check(db: Session, date_str: str, scope_key: Optional[str]):
+        q = db.query(Attendance).filter(Attendance.date == date_str)
+        if scope_key:
+            q = q.filter(Attendance.device_id == scope_key)
+        return q.all()
+
+    @staticmethod
     def get_attendance_report(
         db: Session, start_date: str, end_date: str
     ) -> List[dict]:

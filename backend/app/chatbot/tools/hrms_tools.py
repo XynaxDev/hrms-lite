@@ -12,11 +12,16 @@ from app.models.employee import DepartmentEnum, StatusEnum
 from app.services.employee_service import EmployeeService
 from app.services.attendance_service import AttendanceService
 from app.services.activity_service import ActivityService
+from app.core.demo_scope_context import get_demo_scope_key
 
 
 def get_db_session() -> Session:
     """Get a database session for tool operations."""
     return SessionLocal()
+
+
+def _scope_key() -> str | None:
+    return get_demo_scope_key()
 
 
 def _normalize_department(department: str) -> str | None:
@@ -39,9 +44,10 @@ def get_organization_stats() -> str:
     """
     db = get_db_session()
     try:
-        total = EmployeeService.get_employee_count(db)
-        on_leave = len(EmployeeService.get_employees_by_status(db, "On Leave"))
-        att_stats = AttendanceService.get_attendance_stats(db)
+        scope_key = _scope_key()
+        total = EmployeeService.get_employee_count(db, scope_key=scope_key)
+        on_leave = len(EmployeeService.get_employees_by_status_scoped(db, "On Leave", scope_key=scope_key))
+        att_stats = AttendanceService.get_attendance_stats_scoped(db, scope_key=scope_key)
 
         return f"""Current Organization Stats:
 - Total Employees: {total}
@@ -60,9 +66,10 @@ def get_recent_activities() -> str:
     """
     db = get_db_session()
     try:
+        scope_key = _scope_key()
         # Seed initial data if empty for demonstration
-        ActivityService.seed_initial_activities(db)
-        activities, total = ActivityService.get_all_activities(db, limit=5)
+        ActivityService.seed_initial_activities(db, scope_key=scope_key)
+        activities, total = ActivityService.get_all_activities(db, limit=5, scope_key=scope_key)
 
         if not activities:
             return "No recent activities found."
@@ -86,7 +93,8 @@ def get_total_employees() -> str:
     """
     db = get_db_session()
     try:
-        count = EmployeeService.get_employee_count(db)
+        scope_key = _scope_key()
+        count = EmployeeService.get_employee_count(db, scope_key=scope_key)
         return f"The organization currently has {count} employees."
     finally:
         db.close()
@@ -103,16 +111,17 @@ def get_employees_by_department(department: str) -> str:
     """
     db = get_db_session()
     try:
+        scope_key = _scope_key()
         normalized_department = _normalize_department(department)
         if normalized_department is None:
-            employees, total = EmployeeService.get_all_employees(db, limit=50)
+            employees, total = EmployeeService.get_all_employees(db, limit=50, scope_key=scope_key)
             if not employees:
                 return "No employees found."
             employee_list = "\n".join([f"- {emp.full_name} ({emp.role})" for emp in employees])
             more = "" if total <= len(employees) else f"\n... and {total - len(employees)} more"
             return f"Employees (showing {len(employees)} of {total}):\n{employee_list}{more}"
 
-        employees = EmployeeService.get_employees_by_department(db, normalized_department)
+        employees = EmployeeService.get_employees_by_department_scoped(db, normalized_department, scope_key=scope_key)
         if not employees:
             return f"No employees found in the {normalized_department} department."
 
@@ -134,7 +143,8 @@ def get_employees_on_leave() -> str:
     """
     db = get_db_session()
     try:
-        employees = EmployeeService.get_employees_by_status(db, "On Leave")
+        scope_key = _scope_key()
+        employees = EmployeeService.get_employees_by_status_scoped(db, "On Leave", scope_key=scope_key)
         if not employees:
             return "No employees are currently on leave."
 
@@ -161,8 +171,9 @@ def get_absent_employees_today() -> str:
     try:
         from datetime import datetime
         today = datetime.now().strftime("%Y-%m-%d")
-        
-        absent_employees = AttendanceService.get_absent_employees(db, today)
+
+        scope_key = _scope_key()
+        absent_employees = AttendanceService.get_absent_employees_scoped(db, today, scope_key=scope_key)
         
         if not absent_employees:
             return "No employees are currently absent. All active employees either have attendance marked or are on leave."
@@ -190,7 +201,8 @@ def get_department_breakdown() -> str:
     """
     db = get_db_session()
     try:
-        stats = EmployeeService.get_department_stats(db)
+        scope_key = _scope_key()
+        stats = EmployeeService.get_department_stats(db, scope_key=scope_key)
         if not stats:
             return "No department statistics available."
 
@@ -211,7 +223,8 @@ def get_status_breakdown() -> str:
     """
     db = get_db_session()
     try:
-        stats = EmployeeService.get_status_stats(db)
+        scope_key = _scope_key()
+        stats = EmployeeService.get_status_stats(db, scope_key=scope_key)
         if not stats:
             return "No status statistics available."
 
@@ -234,12 +247,13 @@ def get_employee_details(identifier: str) -> str:
     """
     db = get_db_session()
     try:
+        scope_key = _scope_key()
         if identifier and identifier.strip().lower() in {s.value.lower() for s in StatusEnum}:
             status = next(
                 (s.value for s in StatusEnum if s.value.lower() == identifier.strip().lower()),
                 identifier.strip(),
             )
-            employees = EmployeeService.get_employees_by_status(db, status)
+            employees = EmployeeService.get_employees_by_status_scoped(db, status, scope_key=scope_key)
             if not employees:
                 return f"No employees found with status: {status}"
             preview = employees[:10]
@@ -248,15 +262,15 @@ def get_employee_details(identifier: str) -> str:
             return f"Employees with status '{status}' ({len(employees)} total):\n{employee_list}{more}"
 
         # Try to find by ID first
-        employee = EmployeeService.get_employee_by_id(db, identifier)
+        employee = EmployeeService.get_employee_by_id_scoped(db, identifier, scope_key=scope_key)
 
         # If not found, try by email
         if not employee and "@" in identifier:
-            employee = EmployeeService.get_employee_by_email(db, identifier)
+            employee = EmployeeService.get_employee_by_email_scoped(db, identifier, scope_key=scope_key)
 
         # If not found, try searching by name
         if not employee:
-            employees, total = EmployeeService.get_all_employees(db, search=identifier, limit=5)
+            employees, total = EmployeeService.get_all_employees(db, search=identifier, limit=5, scope_key=scope_key)
             if employees:
                 if len(employees) == 1:
                     employee = employees[0]
@@ -295,7 +309,8 @@ def search_employees(query: str) -> str:
     """
     db = get_db_session()
     try:
-        employees, total = EmployeeService.get_all_employees(db, search=query, limit=10)
+        scope_key = _scope_key()
+        employees, total = EmployeeService.get_all_employees(db, search=query, limit=10, scope_key=scope_key)
         if not employees:
             return f"No employees found matching '{query}'."
 
@@ -318,8 +333,9 @@ def get_today_attendance() -> str:
     """
     db = get_db_session()
     try:
-        stats = AttendanceService.get_attendance_stats(db)
-        records = AttendanceService.get_today_attendance(db)
+        scope_key = _scope_key()
+        stats = AttendanceService.get_attendance_stats_scoped(db, scope_key=scope_key)
+        records = AttendanceService.get_today_attendance_scoped(db, scope_key)
 
         present_list = [r for r in records if r.status.value == "Present"]
 
@@ -357,8 +373,9 @@ def get_employee_attendance(employee_id: str) -> str:
     """
     db = get_db_session()
     try:
+        scope_key = _scope_key()
         records, total = AttendanceService.get_all_attendance(
-            db, employee_id=employee_id, limit=10
+            db, employee_id=employee_id, limit=10, scope_key=scope_key
         )
         if not records:
             return f"No attendance records found for employee {employee_id}."
@@ -393,7 +410,8 @@ def get_attendance_report(start_date: str = None, end_date: str = None) -> str:
         if not start_date:
             start_date = datetime.now().strftime("%Y-%m-01")
 
-        report = AttendanceService.get_attendance_report(db, start_date, end_date)
+        scope_key = _scope_key()
+        report = AttendanceService.get_attendance_report_scoped(db, start_date, end_date, scope_key=scope_key)
 
         if not report:
             return f"No attendance records found between {start_date} and {end_date}."

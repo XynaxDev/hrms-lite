@@ -67,9 +67,27 @@ class EmployeeService:
         return db.query(Employee).filter(Employee.id == employee_id).first()
 
     @staticmethod
+    def get_employee_by_id_scoped(
+        db: Session, employee_id: str, scope_key: Optional[str] = None
+    ) -> Optional[Employee]:
+        query = db.query(Employee).filter(Employee.id == employee_id)
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        return query.first()
+
+    @staticmethod
     def get_employee_by_email(db: Session, email: str) -> Optional[Employee]:
         """Get a single employee by email."""
         return db.query(Employee).filter(Employee.email == email).first()
+
+    @staticmethod
+    def get_employee_by_email_scoped(
+        db: Session, email: str, scope_key: Optional[str] = None
+    ) -> Optional[Employee]:
+        query = db.query(Employee).filter(Employee.email == email)
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        return query.first()
 
     @staticmethod
     def create_employee(
@@ -203,25 +221,45 @@ class EmployeeService:
         return db.query(Employee).filter(Employee.department == department).all()
 
     @staticmethod
+    def get_employees_by_department_scoped(
+        db: Session, department: str, scope_key: Optional[str] = None
+    ) -> List[Employee]:
+        query = db.query(Employee).filter(Employee.department == department)
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        return query.all()
+
+    @staticmethod
     def get_employees_by_status(db: Session, status: str) -> List[Employee]:
         """Get all employees with a specific status."""
         return db.query(Employee).filter(Employee.status == status).all()
 
     @staticmethod
-    def get_employee_count(db: Session) -> int:
-        """Get total employee count."""
-        return db.query(Employee).count()
+    def get_employees_by_status_scoped(
+        db: Session, status: str, scope_key: Optional[str] = None
+    ) -> List[Employee]:
+        query = db.query(Employee).filter(Employee.status == status)
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        return query.all()
 
     @staticmethod
-    def get_department_stats(db: Session) -> dict:
+    def get_employee_count(db: Session, scope_key: Optional[str] = None) -> int:
+        """Get total employee count."""
+        query = db.query(Employee)
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        return query.count()
+
+    @staticmethod
+    def get_department_stats(db: Session, scope_key: Optional[str] = None) -> dict:
         """Get employee count by department."""
         from sqlalchemy import func
 
-        result = (
-            db.query(Employee.department, func.count(Employee.id).label("count"))
-            .group_by(Employee.department)
-            .all()
-        )
+        query = db.query(Employee.department, func.count(Employee.id).label("count"))
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        result = query.group_by(Employee.department).all()
 
         return {
             str(dept.value if hasattr(dept, "value") else dept): count
@@ -229,15 +267,14 @@ class EmployeeService:
         }
 
     @staticmethod
-    def get_status_stats(db: Session) -> dict:
+    def get_status_stats(db: Session, scope_key: Optional[str] = None) -> dict:
         """Get employee count by status."""
         from sqlalchemy import func
 
-        result = (
-            db.query(Employee.status, func.count(Employee.id).label("count"))
-            .group_by(Employee.status)
-            .all()
-        )
+        query = db.query(Employee.status, func.count(Employee.id).label("count"))
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        result = query.group_by(Employee.status).all()
 
         return {
             str(status.value if hasattr(status, "value") else status): count
