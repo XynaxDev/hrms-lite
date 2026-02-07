@@ -2,9 +2,26 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
+const DEVICE_ID_STORAGE_KEY = 'hrms_demo_device_id';
+
+const getOrCreateDeviceId = () => {
+  try {
+    const existing = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+    if (existing && existing.trim()) return existing;
+    const id = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+      ? (crypto as any).randomUUID()
+      : `dev_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, id);
+    return id;
+  } catch {
+    return `dev_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+};
+
 const getHeaders = () => ({
   'Content-Type': 'application/json',
   'X-API-Key': API_KEY,
+  'X-Device-Id': getOrCreateDeviceId(),
 });
 
 const mapEmployeeToDB = (data: any) => {
@@ -47,7 +64,7 @@ const mapEmployeeFromDB = (data: any) => {
 
 export async function fetchEmployees() {
   const response = await fetch(`${API_BASE_URL}/employees`, {
-    headers: { 'X-API-Key': API_KEY }
+    headers: getHeaders()
   });
   if (!response.ok) throw new Error('Failed to fetch employees');
   const data = await response.json();
@@ -93,7 +110,7 @@ export async function deleteEmployee(id: string) {
   console.log('DELETE URL:', url);
   const response = await fetch(url, {
     method: 'DELETE',
-    headers: { 'X-API-Key': API_KEY }
+    headers: getHeaders()
   });
   console.log('Response:', response.status, response.statusText);
   if (!response.ok) {
@@ -110,7 +127,7 @@ export async function deleteEmployee(id: string) {
 export async function fetchAttendance(date?: string) {
   const url = date ? `${API_BASE_URL}/attendance?date=${date}` : `${API_BASE_URL}/attendance`;
   const response = await fetch(url, {
-    headers: { 'X-API-Key': API_KEY }
+    headers: getHeaders()
   });
   if (!response.ok) throw new Error('Failed to fetch attendance');
   const data = await response.json();
@@ -158,7 +175,7 @@ export async function fetchAttendanceSummary(startDate?: string, endDate?: strin
   
   const url = `${API_BASE_URL}/attendance/summary/all${params.toString() ? '?' + params.toString() : ''}`;
   const response = await fetch(url, {
-    headers: { 'X-API-Key': API_KEY }
+    headers: getHeaders()
   });
   if (!response.ok) throw new Error('Failed to fetch attendance summary');
   const data = await response.json();
