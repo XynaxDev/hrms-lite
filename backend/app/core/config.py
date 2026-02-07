@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ALLOWED_ORIGINS: str = ""
 
+    # Demo isolation (no-auth demo mode)
+    DEMO_ISOLATION_ENABLED: bool = False
+    DEMO_ISOLATION_MODE: str = "device"  # device | ip
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000

@@ -14,16 +14,18 @@ from app.schemas.activity import ActivityCreate
 class ActivityService:
     @staticmethod
     def get_all_activities(
-        db: Session, limit: int = 10, skip: int = 0
+        db: Session, limit: int = 10, skip: int = 0, scope_key: str | None = None
     ) -> Tuple[List[Activity], int]:
         """Get all activities with pagination."""
         query = db.query(Activity).order_by(desc(Activity.created_at))
+        if scope_key:
+            query = query.filter(Activity.device_id == scope_key)
         total = query.count()
         activities = query.offset(skip).limit(limit).all()
         return activities, total
 
     @staticmethod
-    def create_activity(db: Session, activity_in: ActivityCreate) -> Activity:
+    def create_activity(db: Session, activity_in: ActivityCreate, scope_key: str | None = None) -> Activity:
         """Create a new activity entry."""
         db_activity = Activity(
             id=f"ACT-{uuid.uuid4().hex[:6].upper()}",
@@ -31,6 +33,7 @@ class ActivityService:
             description=activity_in.description,
             type=activity_in.type,
             timestamp=activity_in.timestamp,
+            device_id=scope_key,
         )
         db.add(db_activity)
         db.commit()
@@ -38,9 +41,12 @@ class ActivityService:
         return db_activity
 
     @staticmethod
-    def seed_initial_activities(db: Session):
+    def seed_initial_activities(db: Session, scope_key: str | None = None):
         """Seed initial activities if the table is empty."""
-        if db.query(Activity).count() > 0:
+        q = db.query(Activity)
+        if scope_key:
+            q = q.filter(Activity.device_id == scope_key)
+        if q.count() > 0:
             return
 
         initial_data = [
@@ -65,4 +71,4 @@ class ActivityService:
         ]
 
         for data in initial_data:
-            ActivityService.create_activity(db, ActivityCreate(**data))
+            ActivityService.create_activity(db, ActivityCreate(**data), scope_key=scope_key)

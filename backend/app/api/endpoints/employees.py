@@ -1,12 +1,11 @@
-"""
-Employee API endpoints.
-"""
+"""Employee API endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.db.database import get_db
+from app.core.demo_isolation import get_demo_scope
 from app.services.employee_service import EmployeeService
 from app.schemas.employee import (
     EmployeeCreate,
@@ -26,10 +25,17 @@ def get_employees(
     status: Optional[str] = Query(None, description="Filter by status"),
     search: Optional[str] = Query(None, description="Search by name, email, or role"),
     db: Session = Depends(get_db),
+    scope_key: Optional[str] = Depends(get_demo_scope),
 ):
     """Get all employees with optional filtering and pagination."""
     employees, total = EmployeeService.get_all_employees(
-        db, skip=skip, limit=limit, department=department, status=status, search=search
+        db,
+        skip=skip,
+        limit=limit,
+        department=department,
+        status=status,
+        search=search,
+        scope_key=scope_key,
     )
 
     return EmployeeListResponse(
@@ -41,8 +47,36 @@ def get_employees(
 
 
 @router.get("/stats")
-def get_employee_stats(db: Session = Depends(get_db)):
+def get_employee_stats(
+    db: Session = Depends(get_db),
+    scope_key: Optional[str] = Depends(get_demo_scope),
+):
     """Get employee statistics."""
+    from app.models.employee import Employee
+    from sqlalchemy import func
+
+    if scope_key:
+        total = db.query(Employee).filter(Employee.device_id == scope_key).count()
+        by_department = {
+            str(dept.value if hasattr(dept, "value") else dept): count
+            for dept, count in (
+                db.query(Employee.department, func.count(Employee.id).label("count"))
+                .filter(Employee.device_id == scope_key)
+                .group_by(Employee.department)
+                .all()
+            )
+        }
+        by_status = {
+            str(status.value if hasattr(status, "value") else status): count
+            for status, count in (
+                db.query(Employee.status, func.count(Employee.id).label("count"))
+                .filter(Employee.device_id == scope_key)
+                .group_by(Employee.status)
+                .all()
+            )
+        }
+        return {"total": total, "by_department": by_department, "by_status": by_status}
+
     return {
         "total": EmployeeService.get_employee_count(db),
         "by_department": EmployeeService.get_department_stats(db),
@@ -51,18 +85,28 @@ def get_employee_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)
-def get_employee(employee_id: str, db: Session = Depends(get_db)):
+def get_employee(
+    employee_id: str,
+    db: Session = Depends(get_db),
+    scope_key: Optional[str] = Depends(get_demo_scope),
+):
     """Get a single employee by ID."""
     employee = EmployeeService.get_employee_by_id(db, employee_id)
     if not employee:
         raise HTTPException(
             status_code=404, detail=f"Employee with ID {employee_id} not found"
         )
+    if scope_key and employee.device_id != scope_key:
+        raise HTTPException(status_code=404, detail=f"Employee with ID {employee_id} not found")
     return employee
 
 
 @router.post("", response_model=EmployeeResponse, status_code=201)
-def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db)):
+def create_employee(
+    employee: EmployeeCreate,
+    db: Session = Depends(get_db),
+    scope_key: Optional[str] = Depends(get_demo_scope),
+):
     """Create a new employee."""
     # Check for duplicate email
     existing = EmployeeService.get_employee_by_email(db, employee.email)
@@ -72,12 +116,15 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db)):
             detail=f"An employee with email {employee.email} already exists",
         )
 
-    return EmployeeService.create_employee(db, employee)
+    return EmployeeService.create_employee_scoped(db, employee, scope_key)
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
 def update_employee(
-    employee_id: str, employee: EmployeeUpdate, db: Session = Depends(get_db)
+    employee_id: str,
+    employee: EmployeeUpdate,
+    db: Session = Depends(get_db),
+    scope_key: Optional[str] = Depends(get_demo_scope),
 ):
     """Update an existing employee."""
     # Check if employee exists
@@ -86,6 +133,9 @@ def update_employee(
         raise HTTPException(
             status_code=404, detail=f"Employee with ID {employee_id} not found"
         )
+
+    if scope_key and existing.device_id != scope_key:
+        raise HTTPException(status_code=404, detail=f"Employee with ID {employee_id} not found")
 
     # Check for duplicate email if email is being updated
     if employee.email and employee.email != existing.email:
@@ -101,7 +151,11 @@ def update_employee(
 
 
 @router.delete("/{employee_id}", status_code=204)
-def delete_employee(employee_id: str, db: Session = Depends(get_db)):
+def delete_employee(
+    employee_id: str,
+    db: Session = Depends(get_db),
+    scope_key: Optional[str] = Depends(get_demo_scope),
+):
     """Delete an employee."""
     import logging
 
@@ -114,6 +168,15 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Employee ID is required")
 
     logger.info(f"Attempting to delete employee: {employee_id}")
+    existing = EmployeeService.get_employee_by_id(db, employee_id)
+    if not existing:
+      raise HTTPException(
+          status_code=404, detail=f"Employee with ID {employee_id} not found"
+      )
+
+    if scope_key and existing.device_id != scope_key:
+        raise HTTPException(status_code=404, detail=f"Employee with ID {employee_id} not found")
+
     deleted = EmployeeService.delete_employee(db, employee_id)
 
     if not deleted:

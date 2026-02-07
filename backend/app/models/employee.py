@@ -42,6 +42,9 @@ class Employee(Base):
     location = Column(String(200), nullable=True)
     joined_date = Column(String(20), nullable=False)
 
+    # Demo isolation (nullable in production)
+    device_id = Column(String(128), nullable=True, index=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -4,6 +4,7 @@ API router configuration.
 
 from fastapi import APIRouter, Depends
 from app.core.security import get_api_key
+
 from app.api.endpoints import (
     employees_router,
     attendance_router,

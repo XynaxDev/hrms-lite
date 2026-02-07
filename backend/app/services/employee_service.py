@@ -33,9 +33,13 @@ class EmployeeService:
         department: Optional[str] = None,
         status: Optional[str] = None,
         search: Optional[str] = None,
+        scope_key: Optional[str] = None,
     ) -> Tuple[List[Employee], int]:
         """Get all employees with optional filtering."""
         query = db.query(Employee)
+
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
 
         # Apply filters
         if department:
@@ -68,7 +72,9 @@ class EmployeeService:
         return db.query(Employee).filter(Employee.email == email).first()
 
     @staticmethod
-    def create_employee(db: Session, employee_data: EmployeeCreate) -> Employee:
+    def create_employee(
+        db: Session, employee_data: EmployeeCreate, scope_key: Optional[str] = None
+    ) -> Employee:
         """Create a new employee."""
         # Map pydantic enum to SQLAlchemy enum
         department_enum = DepartmentEnum(employee_data.department.value)
@@ -86,6 +92,7 @@ class EmployeeService:
             check_in_time=employee_data.check_in_time,
             location=employee_data.location,
             joined_date=employee_data.joined_date,
+            device_id=scope_key,
         )
 
         db.add(db_employee)
@@ -97,6 +104,7 @@ class EmployeeService:
             description=f"{db_employee.full_name} joined {db_employee.department.value} as {db_employee.role}",
             type="onboarding",
             timestamp="Just now",
+            device_id=scope_key,
         )
         db.add(new_activity)
 
@@ -104,6 +112,13 @@ class EmployeeService:
         db.refresh(db_employee)
 
         return db_employee
+
+    @staticmethod
+    def create_employee_scoped(
+        db: Session, employee_data: EmployeeCreate, scope_key: Optional[str]
+    ) -> Employee:
+        """Create a new employee and bind it to demo isolation scope."""
+        return EmployeeService.create_employee(db, employee_data, scope_key=scope_key)
 
     @staticmethod
     def update_employee(

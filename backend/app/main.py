@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.db.database import Base, engine
+from sqlalchemy import text
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -52,6 +53,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=[
         "X-API-Key",
+        "X-Device-Id",
         "Content-Type",
         "Authorization",
     ],  # Explicitly list allowed headers
@@ -115,6 +117,16 @@ async def health_check():
 @app.on_event("startup")
 def startup_event():
     Base.metadata.create_all(bind=engine)
+    if settings.DEMO_ISOLATION_ENABLED:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE IF EXISTS employees ADD COLUMN IF NOT EXISTS device_id TEXT"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_employees_device_id ON employees(device_id)"))
+
+            conn.execute(text("ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS device_id TEXT"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_attendance_device_id ON attendance(device_id)"))
+
+            conn.execute(text("ALTER TABLE IF EXISTS activities ADD COLUMN IF NOT EXISTS device_id TEXT"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_activities_device_id ON activities(device_id)"))
     print("Database tables created/verified.")
 
 

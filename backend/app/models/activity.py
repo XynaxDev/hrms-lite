@@ -20,6 +20,9 @@ class Activity(Base):
     )  # e.g., 'onboarding', 'payroll', 'attendance'
     timestamp = Column(String(50), nullable=False)
 
+    # Demo isolation (nullable in production)
+    device_id = Column(String(128), nullable=True, index=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

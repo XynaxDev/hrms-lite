@@ -32,9 +32,13 @@ class AttendanceService:
         date_filter: Optional[str] = None,
         employee_id: Optional[str] = None,
         status: Optional[str] = None,
+        scope_key: Optional[str] = None,
     ) -> Tuple[List[Attendance], int]:
         """Get all attendance records with optional filtering."""
         query = db.query(Attendance)
+
+        if scope_key:
+            query = query.filter(Attendance.device_id == scope_key)
 
         if date_filter:
             query = query.filter(Attendance.date == date_filter)
@@ -87,6 +91,17 @@ class AttendanceService:
         db.refresh(db_attendance)
 
         return db_attendance
+
+    @staticmethod
+    def create_attendance_scoped(
+        db: Session, attendance_data: AttendanceCreate, scope_key: Optional[str]
+    ) -> Attendance:
+        att = AttendanceService.create_attendance(db, attendance_data)
+        if scope_key:
+            att.device_id = scope_key
+            db.commit()
+            db.refresh(att)
+        return att
 
     @staticmethod
     def mark_attendance(
@@ -190,6 +205,14 @@ class AttendanceService:
         return db.query(Attendance).filter(Attendance.date == today).all()
 
     @staticmethod
+    def get_today_attendance_scoped(db: Session, scope_key: Optional[str]) -> List[Attendance]:
+        today = datetime.now().strftime("%Y-%m-%d")
+        query = db.query(Attendance).filter(Attendance.date == today)
+        if scope_key:
+            query = query.filter(Attendance.device_id == scope_key)
+        return query.all()
+
+    @staticmethod
     def get_attendance_stats(db: Session, date_str: Optional[str] = None) -> dict:
         """Get attendance statistics for a date."""
         if not date_str:
@@ -205,6 +228,30 @@ class AttendanceService:
         on_leave = query.filter(
             Attendance.status == AttendanceStatusEnum.ON_LEAVE
         ).count()
+
+        return {
+            "date": date_str,
+            "total": total,
+            "present": present,
+            "absent": absent,
+            "on_leave": on_leave,
+            "attendance_rate": round((present / total * 100) if total > 0 else 0, 2),
+        }
+
+    @staticmethod
+    def get_attendance_stats_scoped(
+        db: Session, date_str: Optional[str] = None, scope_key: Optional[str] = None
+    ) -> dict:
+        if not date_str:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+        query = db.query(Attendance).filter(Attendance.date == date_str)
+        if scope_key:
+            query = query.filter(Attendance.device_id == scope_key)
+
+        total = query.count()
+        present = query.filter(Attendance.status == AttendanceStatusEnum.PRESENT).count()
+        absent = query.filter(Attendance.status == AttendanceStatusEnum.ABSENT).count()
+        on_leave = query.filter(Attendance.status == AttendanceStatusEnum.ON_LEAVE).count()
 
         return {
             "date": date_str,
@@ -254,13 +301,15 @@ class AttendanceService:
                 # Check if marked as absent
                 att_record = next((att for att in today_attendance if att.employee_id == emp.id), None)
                 if att_record and att_record.status == AttendanceStatusEnum.ABSENT:
-                    absent_employees.append({
-                        "id": emp.id,
-                        "name": emp.full_name,
-                        "department": emp.department.value,
-                        "role": emp.role,
-                        "reason": "Marked as Absent"
-                    })
+                    absent_employees.append(
+                        {
+                            "id": emp.id,
+                            "name": emp.full_name,
+                            "department": emp.department.value,
+                            "role": emp.role,
+                            "reason": "Marked as Absent",
+                        }
+                    )
         
         return absent_employees
 
@@ -306,3 +355,54 @@ class AttendanceService:
                 report_map[emp_id]["on_leave"] = count
 
         return list(report_map.values())
+
+    @staticmethod
+    def get_attendance_report_scoped(
+        db: Session, start_date: str, end_date: str, scope_key: Optional[str]
+    ) -> List[dict]:
+        from sqlalchemy import func
+
+        q = db.query(
+            Attendance.employee_id,
+            Attendance.employee_name,
+            Attendance.status,
+            func.count(Attendance.id).label("count"),
+        ).filter(Attendance.date >= start_date, Attendance.date <= end_date)
+
+        if scope_key:
+            q = q.filter(Attendance.device_id == scope_key)
+
+        results = (
+            q.group_by(Attendance.employee_id, Attendance.employee_name, Attendance.status).all()
+        )
+
+        report_map = {}
+        for emp_id, name, status, count in results:
+            if emp_id not in report_map:
+                report_map[emp_id] = {
+                    "id": emp_id,
+                    "name": name,
+                    "present": 0,
+                    "absent": 0,
+                    "on_leave": 0,
+                }
+
+            if status == AttendanceStatusEnum.PRESENT:
+                report_map[emp_id]["present"] = count
+            elif status == AttendanceStatusEnum.ABSENT:
+                report_map[emp_id]["absent"] = count
+            elif status == AttendanceStatusEnum.ON_LEAVE:
+                report_map[emp_id]["on_leave"] = count
+
+        return list(report_map.values())
+
+    @staticmethod
+    def mark_attendance_scoped(
+        db: Session, request: MarkAttendanceRequest, scope_key: Optional[str]
+    ) -> Optional[Attendance]:
+        record = AttendanceService.mark_attendance(db, request)
+        if record and scope_key:
+            record.device_id = scope_key
+            db.commit()
+            db.refresh(record)
+        return record
