@@ -216,24 +216,71 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         </div>
       </div>
 
-      <div className="mb-10 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-white/20 shadow-lg shadow-slate-900/5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+        {[
+          { 
+            label: 'Total Employees', 
+            value: employees.length, 
+            color: 'text-slate-900',
+            bg: 'bg-slate-50',
+            icon: 'groups',
+            iconColor: 'text-slate-900'
+          },
+          { 
+            label: 'Active', 
+            value: employees.filter(e => e.status === 'Active').length,
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-50',
+            icon: 'check_circle',
+            iconColor: 'text-emerald-600'
+          },
+          { 
+            label: 'On Leave', 
+            value: employees.filter(e => e.status === 'On Leave').length,
+            color: 'text-blue-600',
+            bg: 'bg-blue-50',
+            icon: 'airplane_ticket',
+            iconColor: 'text-blue-600'
+          },
+          { 
+            label: 'Terminated', 
+            value: employees.filter(e => e.status === 'Terminated').length,
+            color: 'text-rose-600',
+            bg: 'bg-rose-50',
+            icon: 'block',
+            iconColor: 'text-rose-600'
+          },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+             <div>
+                <span className={`text-3xl font-bold ${stat.color} block tracking-tighter`}>{stat.value}</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">{stat.label}</span>
+             </div>
+             <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${stat.bg}`}>
+                <span className={`material-symbols-outlined text-2xl ${stat.iconColor}`}>{stat.icon}</span>
+             </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="relative z-30 mb-10 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 bg-white/70 backdrop-blur-md p-4 rounded-2xl border border-white/20 shadow-lg shadow-slate-900/5">
         <div className="flex items-center gap-2 text-sm text-slate-600 font-semibold min-w-fit">
           <span className="material-symbols-outlined text-xl">filter_list</span>
           <span>Joined Date:</span>
         </div>
         <div className="flex w-full sm:w-auto items-center gap-3 flex-wrap">
-          <div className="w-full sm:w-40">
+          <div className="relative z-[200] w-full sm:w-40">
             <Calendar value={filterStartDate} onChange={setFilterStartDate} />
           </div>
-          <span className="text-slate-500 font-bold text-lg flex-shrink-0 hidden sm:inline">→</span>
-          <div className="w-full sm:w-40">
+          <span className="hidden sm:inline-flex items-center justify-center text-slate-500 font-bold text-lg flex-shrink-0 px-1">→</span>
+          <div className="relative z-[200] w-full sm:w-40">
             <Calendar value={filterEndDate} onChange={setFilterEndDate} />
           </div>
         </div>
         {(filterStartDate || filterEndDate) && (
           <button 
             onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
-            className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+            className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700 font-bold px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors ml-2"
           >
             <span className="material-symbols-outlined text-sm">close</span>
             Clear

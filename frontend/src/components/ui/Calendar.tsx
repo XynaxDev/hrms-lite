@@ -62,6 +62,8 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
     const month = viewDate.getMonth();
     const daysCount = daysInMonth(year, month);
     const startDay = firstDayOfMonth(year, month);
+    const today = new Date();
+    const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const days = [];
 
     // Empty cells for previous month
@@ -73,6 +75,7 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
     for (let i = 1; i <= daysCount; i++) {
       const currentDateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       const isSelected = currentDateString === value;
+      const isToday = currentDateString === todayString;
       
       days.push(
         <button
@@ -81,7 +84,9 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
           className={`h-8 w-8 rounded-full text-sm font-medium transition-colors flex items-center justify-center
             ${isSelected 
               ? 'bg-slate-900 text-white' 
-              : 'text-slate-700 hover:bg-slate-100'
+              : isToday
+                ? 'bg-slate-900/10 text-slate-900 ring-2 ring-slate-900/15 hover:bg-slate-900/15'
+                : 'text-slate-700 hover:bg-slate-100'
             }`}
         >
           {i}
@@ -139,7 +144,7 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
                    onChange('');
                    setIsOpen(false);
                 }}
-                className="text-xs text-slate-500 hover:text-slate-900 font-medium"
+                className="text-xs text-slate-500 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
              >
                 Clear
              </button>

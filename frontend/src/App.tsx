@@ -148,7 +148,7 @@ const App: React.FC = () => {
       <div className="w-full h-full flex flex-col min-w-0 overflow-hidden md:flex-1">
         {/* Mobile navbar - only visible on mobile */}
         <div className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={handleGoHome}>
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
               <span className="material-symbols-outlined text-xl">blur_on</span>
             </div>

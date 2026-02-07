@@ -164,6 +164,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                   <tr className="border-b border-slate-100">
                     <th className="px-6 py-5 font-semibold text-slate-400 text-xs uppercase tracking-widest">ID</th>
                     <th className="px-6 py-5 font-semibold text-slate-400 text-xs uppercase tracking-widest">Employee</th>
+                    <th className="px-6 py-5 font-semibold text-slate-400 text-xs uppercase tracking-widest">Date</th>
                     <th className="px-6 py-5 font-semibold text-slate-400 text-xs uppercase tracking-widest">Status</th>
                     <th className="px-6 py-5 font-semibold text-slate-400 text-xs uppercase tracking-widest text-right">Actions</th>
                   </tr>
@@ -182,6 +183,9 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                             <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{record.role}</div>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-bold text-slate-600">{record.date}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider
