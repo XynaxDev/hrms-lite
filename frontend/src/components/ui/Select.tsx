@@ -9,6 +9,8 @@ interface SelectProps {
   isSearchable?: boolean;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  position?: 'auto' | 'up' | 'down';
+  maxVisibleOptions?: number;
 }
 
 const Select: React.FC<SelectProps> = ({ 
@@ -18,18 +20,22 @@ const Select: React.FC<SelectProps> = ({
   placeholder = "Select...",
   isSearchable = false,
   searchValue = '',
-  onSearchChange
+  onSearchChange,
+  position = 'auto',
+  maxVisibleOptions
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties | undefined>(undefined);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setMenuStyle(undefined);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -52,17 +58,63 @@ const Select: React.FC<SelectProps> = ({
     const rect = el.getBoundingClientRect();
     const viewportH = window.innerHeight;
 
-    const approxDropdownH = isSearchable ? 320 : 260;
+    const approxDropdownH = isSearchable ? 380 : 320;
     const spaceBelow = viewportH - rect.bottom;
     const spaceAbove = rect.top;
 
-    setOpenUp(spaceBelow < approxDropdownH && spaceAbove > spaceBelow);
+    const forcedUp = position === 'up';
+    const forcedDown = position === 'down';
+    const autoUp = spaceBelow < approxDropdownH && spaceAbove > spaceBelow;
+    const nextOpenUp = forcedUp ? true : forcedDown ? false : autoUp;
+    setOpenUp(nextOpenUp);
+
+    const width = rect.width;
+    const left = rect.left;
+    const rightOverflow = left + width - window.innerWidth;
+    const clampedLeft = rightOverflow > 0 ? Math.max(8, left - rightOverflow - 8) : Math.max(8, left);
+    const shouldUp = nextOpenUp;
+    const top = shouldUp ? undefined : rect.bottom + 4;
+    const bottom = shouldUp ? window.innerHeight - rect.top + 4 : undefined;
+    const optionRowPx = 34;
+    const cappedByCount =
+      typeof maxVisibleOptions === 'number' && maxVisibleOptions > 0
+        ? maxVisibleOptions * optionRowPx + (isSearchable ? 56 : 16)
+        : undefined;
+
+    const naturalMax = Math.min(isSearchable ? 420 : 340, Math.max(220, (shouldUp ? spaceAbove : spaceBelow) - 16));
+    const maxH = cappedByCount ? Math.min(naturalMax, cappedByCount) : naturalMax;
+
+    setMenuStyle({
+      position: 'fixed',
+      left: clampedLeft,
+      width,
+      top,
+      bottom,
+      maxHeight: maxH,
+    });
   };
 
   const handleToggle = () => {
-    if (!isOpen) computeDropdownDirection();
-    setIsOpen(!isOpen);
+    if (!isOpen) {
+      computeDropdownDirection();
+      setIsOpen(true);
+      return;
+    }
+    setIsOpen(false);
+    setMenuStyle(undefined);
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onRecalc = () => computeDropdownDirection();
+    onRecalc();
+    window.addEventListener('resize', onRecalc);
+    window.addEventListener('scroll', onRecalc, true);
+    return () => {
+      window.removeEventListener('resize', onRecalc);
+      window.removeEventListener('scroll', onRecalc, true);
+    };
+  }, [isOpen, isSearchable, position]);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -75,8 +127,11 @@ const Select: React.FC<SelectProps> = ({
         <span className="material-symbols-outlined text-slate-400 text-lg">unfold_more</span>
       </button>
 
-      {isOpen && (
-        <div className={`absolute z-[100] max-h-60 w-full min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white text-slate-950 shadow-md animate-in fade-in zoom-in-95 duration-200 flex flex-col ${openUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+      {isOpen && menuStyle && (
+        <div
+          className="z-[9999] overflow-hidden rounded-md border border-slate-200 bg-white text-slate-950 shadow-md animate-in fade-in zoom-in-95 duration-200 flex flex-col"
+          style={menuStyle}
+        >
           {isSearchable && (
             <div className="border-b border-slate-200 p-2">
               <div className="relative">
@@ -98,7 +153,7 @@ const Select: React.FC<SelectProps> = ({
               </div>
             </div>
           )}
-          <div className="p-1 overflow-auto">
+          <div className="p-1 overflow-auto custom-scrollbar">
             {options
               .filter(opt => {
                 if (!isSearchable || !searchTerm) return true;

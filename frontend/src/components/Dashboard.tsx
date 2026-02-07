@@ -1,11 +1,12 @@
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Employee, Department, Status } from '../types';
 import Dialog from './ui/Dialog';
 import Select from './ui/Select';
 import Calendar from './ui/Calendar';
 import { DEPARTMENTS } from '../constants';
+import { fetchAttendanceSummary } from '../services/api';
 
 interface DashboardProps {
   employees: Employee[];
@@ -17,6 +18,45 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<any>(null);
+  const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
+
+  const loadAttendanceSummary = useCallback(async () => {
+    try {
+      const data = await fetchAttendanceSummary();
+      setAttendanceSummary(Array.isArray(data?.summary) ? data.summary : []);
+    } catch (err) {
+      console.error('Error loading attendance summary:', err);
+      setAttendanceSummary([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAttendanceSummary();
+
+    const onFocus = () => loadAttendanceSummary();
+    const onAttendanceUpdated = () => loadAttendanceSummary();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('attendance:updated', onAttendanceUpdated as EventListener);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('attendance:updated', onAttendanceUpdated as EventListener);
+    };
+  }, [loadAttendanceSummary]);
+
+  useEffect(() => {
+    if (!selectedEmployee) return;
+    loadAttendanceSummary();
+  }, [selectedEmployee, loadAttendanceSummary]);
+
+  const attendanceById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const s of attendanceSummary || []) {
+      const id = (s?.id ?? '').toString().trim().toLowerCase();
+      if (!id) continue;
+      map.set(id, s);
+    }
+    return map;
+  }, [attendanceSummary]);
 
   const statusOptions = [
     { value: 'Active', label: 'Active' },
@@ -24,14 +64,22 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
     { value: 'Terminated', label: 'Terminated' }
   ];
 
-  const handleDownloadReport = () => {
-    const activeCount = employees.filter(e => e.status === 'Active').length;
-    const leaveCount = employees.filter(e => e.status === 'On Leave').length;
-    
-    // Department breakdown
+  const derived = useMemo(() => {
+    const activeEmployees = employees.filter(e => e.status === 'Active').length;
+    const leaveEmployees = employees.filter(e => e.status === 'On Leave').length;
+    const attendanceRate = Math.round((activeEmployees / employees.length) * 100) || 0;
+    const leaveAvatars = employees.filter(e => e.status === 'On Leave').slice(0, 3);
+    const quickTeam = employees.slice(0, 5);
+    return { activeEmployees, leaveEmployees, attendanceRate, leaveAvatars, quickTeam };
+  }, [employees]);
+
+  const handleDownloadReport = useCallback(() => {
+    const activeCount = derived.activeEmployees;
+    const leaveCount = derived.leaveEmployees;
+
     const deptMap: Record<string, number> = {};
     employees.forEach(e => {
-        deptMap[e.department] = (deptMap[e.department] || 0) + 1;
+      deptMap[e.department] = (deptMap[e.department] || 0) + 1;
     });
 
     const reportWindow = window.open('', '_blank');
@@ -131,9 +179,9 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
 
     reportWindow.document.write(html);
     reportWindow.document.close();
-  };
+  }, [derived.activeEmployees, derived.leaveEmployees, employees]);
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!editEmployee) return;
 
@@ -149,18 +197,13 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
     });
     setIsEditModalOpen(false);
     setSelectedEmployee(null);
-  };
+  }, [editEmployee, onUpdateEmployee]);
 
-  const handleEditClick = () => {
-    if (selectedEmployee) {
-      setEditEmployee({ ...selectedEmployee });
-      setIsEditModalOpen(true);
-    }
-  };
-
-  const activeEmployees = employees.filter(e => e.status === 'Active').length;
-  const leaveEmployees = employees.filter(e => e.status === 'On Leave').length;
-  const attendanceRate = Math.round((activeEmployees / employees.length) * 100) || 0;
+  const handleEditClick = useCallback(() => {
+    if (!selectedEmployee) return;
+    setEditEmployee({ ...selectedEmployee });
+    setIsEditModalOpen(true);
+  }, [selectedEmployee]);
 
   return (
     <div className="animate-in fade-in duration-500 pb-10">
@@ -202,11 +245,11 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
           </div>
           <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Attendance Rate</p>
           <div className="mt-4 flex items-baseline gap-2">
-            <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{attendanceRate}%</h3>
+            <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{derived.attendanceRate}%</h3>
             <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">Stable</span>
           </div>
           <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-             <div className="h-full bg-slate-900 rounded-full" style={{ width: `${attendanceRate}%` }}></div>
+             <div className="h-full bg-slate-900 rounded-full" style={{ width: `${derived.attendanceRate}%` }}></div>
           </div>
         </div>
 
@@ -216,11 +259,11 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
           </div>
           <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">On Leave Today</p>
           <div className="mt-4 flex items-baseline gap-2">
-            <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{leaveEmployees}</h3>
+            <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{derived.leaveEmployees}</h3>
             <span className="text-sm font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md">Active</span>
           </div>
           <div className="mt-3 flex -space-x-2">
-              {employees.filter(e => e.status === 'On Leave').slice(0, 3).map(e => (
+              {derived.leaveAvatars.map(e => (
                    <img key={e.id} src={e.avatar} alt={e.fullName} className="h-6 w-6 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover" />
               ))}
           </div>
@@ -249,7 +292,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                 </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                {employees.slice(0, 5).map((emp) => (
+                {derived.quickTeam.map((emp) => (
                     <tr key={emp.id} className="group hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -328,18 +371,26 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
 
                   {/* Attendance Cards */}
                   <div className="grid grid-cols-3 gap-2 mb-3">
+                      {(() => {
+                        const key = (selectedEmployee.id || '').toString().trim().toLowerCase();
+                        const att = attendanceById.get(key) || { present: 0, absent: 0, on_leave: 0 };
+                        return (
+                          <>
                       <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
                           <p className="text-[10px] text-emerald-600 font-medium uppercase">Present</p>
-                          <p className="text-lg font-bold text-emerald-700 mt-1">0</p>
+                          <p className="text-lg font-bold text-emerald-700 mt-1">{att.present || 0}</p>
                       </div>
                       <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 text-center">
                           <p className="text-[10px] text-rose-600 font-medium uppercase">Absent</p>
-                          <p className="text-lg font-bold text-rose-700 mt-1">0</p>
+                          <p className="text-lg font-bold text-rose-700 mt-1">{att.absent || 0}</p>
                       </div>
                       <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 text-center">
                           <p className="text-[10px] text-blue-600 font-medium uppercase">On Leave</p>
-                          <p className="text-lg font-bold text-blue-700 mt-1">0</p>
+                          <p className="text-lg font-bold text-blue-700 mt-1">{att.on_leave || 0}</p>
                       </div>
+                          </>
+                        );
+                      })()}
                   </div>
 
                   <div className="flex justify-end">
@@ -473,4 +524,4 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
   );
 };
 
-export default Dashboard;
+export default React.memo(Dashboard);

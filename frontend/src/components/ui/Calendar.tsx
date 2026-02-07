@@ -13,8 +13,19 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
   const [dropDirection, setDropDirection] = useState<'up' | 'down'>('down');
   
   // Parse initial date
-  const initialDate = value ? new Date(value) : new Date();
+  const parseLocalYMD = (ymd: string) => {
+    const [y, m, d] = ymd.split('-').map(Number);
+    if (!y || !m || !d) return new Date();
+    return new Date(y, m - 1, d);
+  };
+
+  const initialDate = value ? parseLocalYMD(value) : new Date();
   const [viewDate, setViewDate] = useState(initialDate);
+
+  useEffect(() => {
+    if (!value) return;
+    setViewDate(parseLocalYMD(value));
+  }, [value]);
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();

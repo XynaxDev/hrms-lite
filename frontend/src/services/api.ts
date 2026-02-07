@@ -135,26 +135,72 @@ export async function fetchAttendance(date?: string) {
 }
 
 export async function fetchAttendanceSummary(startDate?: string, endDate?: string) {
+  const getTodayLocal = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const getMonthStartLocal = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
+  };
+
   const params = new URLSearchParams();
-  if (startDate) params.append('start_date', startDate);
-  if (endDate) params.append('end_date', endDate);
+  const effectiveStart = startDate || getMonthStartLocal();
+  const effectiveEnd = endDate || getTodayLocal();
+  if (effectiveStart) params.append('start_date', effectiveStart);
+  if (effectiveEnd) params.append('end_date', effectiveEnd);
   
   const url = `${API_BASE_URL}/attendance/summary/all${params.toString() ? '?' + params.toString() : ''}`;
   const response = await fetch(url, {
     headers: { 'X-API-Key': API_KEY }
   });
   if (!response.ok) throw new Error('Failed to fetch attendance summary');
-  return response.json();
+  const data = await response.json();
+
+  if (data && Array.isArray(data.summary)) {
+    data.summary = data.summary.map((s: any) => {
+      const id = s?.id ?? s?.employee_id ?? s?.employeeId;
+      const present = s?.present ?? s?.present_days ?? s?.presentDays ?? 0;
+      const absent = s?.absent ?? s?.absent_days ?? s?.absentDays ?? 0;
+      const on_leave = s?.on_leave ?? s?.onLeave ?? s?.on_leave_days ?? s?.onLeaveDays ?? 0;
+      return { ...s, id, present, absent, on_leave };
+    });
+  }
+
+  return data;
 }
 
 export async function sendChatMessage(message: string, history: any[]) {
-  const response = await fetch(`${API_BASE_URL}/chat`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ message, history }),
-  });
-  if (!response.ok) throw new Error('Failed to get chat response');
-  return response.json();
+  const controller = new AbortController();
+  const timeoutMs = 20000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ message, history }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Failed to get chat response (${response.status})`);
+    }
+    return response.json();
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Chat request timed out. Please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function markAttendance(id: string, status: string, date?: string) {

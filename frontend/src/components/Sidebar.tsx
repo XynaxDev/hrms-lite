@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 interface SidebarProps {
   activeTab: string;
@@ -10,6 +10,23 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onGoHome, isOpen = false, onClose }) => {
+  const prefersReducedMotion = useReducedMotion();
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const media = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(media.matches);
+    update();
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', update);
+      return () => media.removeEventListener('change', update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
+  const reduceMotion = prefersReducedMotion || isMobile;
+
   const menuItems = [
     { id: 'dashboard', icon: 'grid_view', label: 'Dashboard' },
     { id: 'employees', icon: 'groups', label: 'Employees' },
@@ -21,47 +38,57 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onGoHome, is
       <aside className={`fixed top-0 left-0 z-50 h-[100dvh] w-64 overflow-y-auto overflow-x-hidden overscroll-contain transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 md:w-16 md:py-8 md:h-auto md:overflow-visible bg-white/95 backdrop-blur-xl md:backdrop-blur-none md:bg-white/10 border-r border-slate-200/60`}>
         {/* Fluid Background Animations */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          animate={{ 
-            x: [0, 20, -10, 0], 
-            y: [0, -15, 10, 0], 
-            scale: [1, 1.2, 0.8, 1] 
-          }}
-          transition={{ 
-            duration: 8, 
-            repeat: Infinity, 
-            ease: "easeInOut" 
-          }}
-          className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-400/40 to-purple-400/40 blur-xl pointer-events-none"
-        />
-        <motion.div 
-          animate={{ 
-            x: [0, -15, 25, 0], 
-            y: [0, 20, -10, 0], 
-            scale: [1, 0.7, 1.3, 1] 
-          }}
-          transition={{ 
-            duration: 10, 
-            repeat: Infinity, 
-            ease: "easeInOut", 
-            delay: 2 
-          }}
-          className="absolute top-1/2 -left-8 w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-400/35 to-pink-400/35 blur-lg pointer-events-none"
-        />
-        <motion.div 
-          animate={{ 
-            x: [0, 10, -20, 0], 
-            y: [0, -25, 15, 0], 
-            scale: [1, 1.1, 0.9, 1] 
-          }}
-          transition={{ 
-            duration: 12, 
-            repeat: Infinity, 
-            ease: "easeInOut", 
-            delay: 4 
-          }}
-          className="absolute bottom-10 right-1/2 w-28 h-28 rounded-full bg-gradient-to-bl from-emerald-400/38 to-cyan-400/38 blur-xl pointer-events-none"
-        />
+        {reduceMotion ? (
+          <>
+            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-400/40 to-purple-400/40 blur-xl pointer-events-none" />
+            <div className="absolute top-1/2 -left-8 w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-400/35 to-pink-400/35 blur-lg pointer-events-none" />
+            <div className="absolute bottom-10 right-1/2 w-28 h-28 rounded-full bg-gradient-to-bl from-emerald-400/38 to-cyan-400/38 blur-xl pointer-events-none" />
+          </>
+        ) : (
+          <>
+            <motion.div 
+              animate={{ 
+                x: [0, 20, -10, 0], 
+                y: [0, -15, 10, 0], 
+                scale: [1, 1.2, 0.8, 1] 
+              }}
+              transition={{ 
+                duration: 8, 
+                repeat: Infinity, 
+                ease: "easeInOut" 
+              }}
+              className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-blue-400/40 to-purple-400/40 blur-xl pointer-events-none"
+            />
+            <motion.div 
+              animate={{ 
+                x: [0, -15, 25, 0], 
+                y: [0, 20, -10, 0], 
+                scale: [1, 0.7, 1.3, 1] 
+              }}
+              transition={{ 
+                duration: 10, 
+                repeat: Infinity, 
+                ease: "easeInOut", 
+                delay: 2 
+              }}
+              className="absolute top-1/2 -left-8 w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-400/35 to-pink-400/35 blur-lg pointer-events-none"
+            />
+            <motion.div 
+              animate={{ 
+                x: [0, 10, -20, 0], 
+                y: [0, -25, 15, 0], 
+                scale: [1, 1.1, 0.9, 1] 
+              }}
+              transition={{ 
+                duration: 12, 
+                repeat: Infinity, 
+                ease: "easeInOut", 
+                delay: 4 
+              }}
+              className="absolute bottom-10 right-1/2 w-28 h-28 rounded-full bg-gradient-to-bl from-emerald-400/38 to-cyan-400/38 blur-xl pointer-events-none"
+            />
+          </>
+        )}
         
         {/* Glow Effect */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-50/10 to-transparent pointer-events-none"></div>
@@ -106,7 +133,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onGoHome, is
                 
                 {/* Tooltip - Fixed positioning */}
                 <div className="hidden md:block absolute left-full ml-6 top-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-[9999] shadow-xl border border-slate-700">
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-900"></div>
                   {item.label}
                 </div>
               </button>

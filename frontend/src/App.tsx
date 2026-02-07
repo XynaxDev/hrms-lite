@@ -5,16 +5,17 @@
  * (C) 2026 HRMS Enterprise Systems
  */
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import ChatBot from './components/ChatBot';
-import Employees from './components/Employees';
-import Attendance from './components/Attendance';
 import LandingPage from './components/LandingPage';
 import Toast from './components/ui/Toast';
 import { fetchEmployees, createEmployee, deleteEmployee, updateEmployee } from './services/api';
 import { Employee } from './types';
+
+const Dashboard = React.lazy(() => import('./components/Dashboard'));
+const Employees = React.lazy(() => import('./components/Employees'));
+const Attendance = React.lazy(() => import('./components/Attendance'));
+const ChatBot = React.lazy(() => import('./components/ChatBot'));
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -30,7 +31,7 @@ const App: React.FC = () => {
     }
   }, [isAppEntered]);
 
-  const loadEmployees = async () => {
+  const loadEmployees = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await fetchEmployees();
@@ -45,9 +46,9 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleAddEmployee = async (newEmp: any) => {
+  const handleAddEmployee = useCallback(async (newEmp: any) => {
     try {
       const created = await createEmployee(newEmp);
       setEmployees(prev => [created, ...prev]);
@@ -55,9 +56,9 @@ const App: React.FC = () => {
     } catch (error) {
       setToast({ message: (error as Error).message, type: 'error' });
     }
-  };
+  }, []);
 
-  const handleUpdateEmployee = async (id: string, updatedData: any) => {
+  const handleUpdateEmployee = useCallback(async (id: string, updatedData: any) => {
     try {
       const updated = await updateEmployee(id, updatedData);
       setEmployees(prev => prev.map(e => e.id === id ? updated : e));
@@ -65,9 +66,9 @@ const App: React.FC = () => {
     } catch (error) {
       setToast({ message: (error as Error).message, type: 'error' });
     }
-  };
+  }, []);
 
-  const handleDeleteEmployee = async (id: string) => {
+  const handleDeleteEmployee = useCallback(async (id: string) => {
     console.log('Delete request for employee ID:', id);
     try {
       await deleteEmployee(id);
@@ -77,9 +78,17 @@ const App: React.FC = () => {
       console.error('Delete error:', error);
       setToast({ message: (error as Error).message || 'Failed to delete employee.', type: 'error' });
     }
-  };
+  }, []);
 
-  const renderContent = () => {
+  const handleViewAllEmployees = useCallback(() => {
+    setActiveTab('employees');
+  }, []);
+
+  const handleToast = useCallback((message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  }, []);
+
+  const mainContent = useMemo(() => {
     if (isLoading && isAppEntered) {
       return (
         <div className="flex h-full items-center justify-center">
@@ -90,36 +99,54 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard 
-                  employees={employees} 
-                  onUpdateEmployee={handleUpdateEmployee}
-                  onViewAll={() => setActiveTab('employees')}
-                />;
+        return (
+          <Dashboard
+            employees={employees}
+            onUpdateEmployee={handleUpdateEmployee}
+            onViewAll={handleViewAllEmployees}
+          />
+        );
       case 'employees':
-        return <Employees 
-                  employees={employees} 
-                  onAddEmployee={handleAddEmployee}
-                  onUpdateEmployee={handleUpdateEmployee}
-                  onDeleteEmployee={handleDeleteEmployee} 
-                />;
+        return (
+          <Employees
+            employees={employees}
+            onAddEmployee={handleAddEmployee}
+            onUpdateEmployee={handleUpdateEmployee}
+            onDeleteEmployee={handleDeleteEmployee}
+          />
+        );
       case 'attendance':
-        return <Attendance 
-                  employees={employees} 
-                  onToast={(msg, type) => setToast({ message: msg, type })} 
-                />;
+        return (
+          <Attendance
+            employees={employees}
+            onToast={handleToast}
+          />
+        );
       default:
-        return <Dashboard 
-                  employees={employees} 
-                  onUpdateEmployee={handleUpdateEmployee} 
-                  onViewAll={() => setActiveTab('employees')}
-                />;
+        return (
+          <Dashboard
+            employees={employees}
+            onUpdateEmployee={handleUpdateEmployee}
+            onViewAll={handleViewAllEmployees}
+          />
+        );
     }
-  };
+  }, [activeTab, employees, handleAddEmployee, handleDeleteEmployee, handleToast, handleUpdateEmployee, handleViewAllEmployees, isAppEntered, isLoading]);
 
-  const handleGoHome = () => {
+  const handleGoHome = useCallback(() => {
     setIsAppEntered(false);
     setActiveTab('dashboard');
-  };
+  }, []);
+
+  const handleSidebarTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setIsMobileSidebarOpen(false);
+  }, []);
+
+  const handleSidebarGoHome = useCallback(() => {
+    handleGoHome();
+    setIsMobileSidebarOpen(false);
+  }, [handleGoHome]);
 
   if (!isAppEntered) {
       return <LandingPage onEnter={() => setIsAppEntered(true)} />;
@@ -130,8 +157,8 @@ const App: React.FC = () => {
       {/* Sidebar - Desktop: static in flex, Mobile: fixed overlay (doesn't take space) */}
       <Sidebar 
         activeTab={activeTab} 
-        setActiveTab={(tab) => { setActiveTab(tab); setIsMobileSidebarOpen(false); }} 
-        onGoHome={() => { handleGoHome(); setIsMobileSidebarOpen(false); }}
+        setActiveTab={handleSidebarTabChange}
+        onGoHome={handleSidebarGoHome}
         isOpen={isMobileSidebarOpen}
         onClose={() => setIsMobileSidebarOpen(false)}
       />
@@ -166,7 +193,13 @@ const App: React.FC = () => {
         {/* Scrollable main content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col">
           <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10 flex-1">
-            {renderContent()}
+            <Suspense fallback={
+              <div className="flex h-full items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-900 border-t-transparent"></div>
+              </div>
+            }>
+              {mainContent}
+            </Suspense>
           </div>
           
           <footer className="mt-auto px-10 py-10 border-t border-slate-200 bg-white">
@@ -204,7 +237,22 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      <ChatBot />
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(15,23,42,0.28) transparent; }
+        .custom-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(15,23,42,0.22);
+          border-radius: 999px;
+          border: 3px solid transparent;
+          background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(15,23,42,0.35); background-clip: content-box; }
+      ` }} />
+
+      <Suspense fallback={null}>
+        <ChatBot />
+      </Suspense>
       {toast && (
         <Toast 
           message={toast.message} 

@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DEPARTMENTS } from '../constants';
 import Select from './ui/Select';
 import Dialog from './ui/Dialog';
 import Calendar from './ui/Calendar';
-import { Employee, Status, Department } from '../types';
+import { Employee, Department } from '../types';
 import { fetchAttendanceSummary } from '../services/api';
 
 interface EmployeesProps {
@@ -13,6 +13,107 @@ interface EmployeesProps {
   onUpdateEmployee: (id: string, employee: any) => void;
   onDeleteEmployee: (id: string) => void;
 }
+
+const StatCard = React.memo(function StatCard({ stat }: { stat: any }) {
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+       <div>
+          <span className={`text-3xl font-bold ${stat.color} block tracking-tighter`}>{stat.value}</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">{stat.label}</span>
+       </div>
+       <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${stat.bg}`}>
+          <span className={`material-symbols-outlined text-2xl ${stat.iconColor}`}>{stat.icon}</span>
+       </div>
+    </div>
+  );
+});
+
+const EmployeeCard = React.memo(function EmployeeCard({
+  emp,
+  empAttendance,
+  onView,
+  onAskDelete,
+  onEdit,
+}: {
+  emp: Employee;
+  empAttendance: any;
+  onView: (emp: Employee) => void;
+  onAskDelete: (id: string) => void;
+  onEdit: (emp: Employee) => void;
+}) {
+  return (
+    <div className="group relative flex flex-col items-center rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 z-0 hover:z-10">
+        {/* Attendance Days Badge (top-left, properly positioned) */}
+        <div className="absolute left-2 top-2 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1 shadow-md z-10">
+          <span className="material-symbols-outlined text-emerald-600 text-xs">check_circle</span>
+          <span className="text-[10px] font-black text-emerald-700">{empAttendance.present || 0}d</span>
+        </div>
+        {/* Action buttons (eye, delete) */}
+        <div className="absolute right-2 top-2 flex gap-1.5 z-10">
+          <div className="relative group/action">
+            <button 
+              onClick={() => onView(emp)} 
+              className="text-slate-500 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50 bg-white shadow-sm"
+              aria-label="View Profile"
+            >
+              <span className="material-symbols-outlined text-sm">visibility</span>
+            </button>
+            <div className="pointer-events-none absolute right-0 top-full mt-2 hidden whitespace-nowrap rounded-lg bg-slate-900/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm group-hover/action:block">
+              View profile
+            </div>
+          </div>
+
+          <div className="relative group/action">
+            <button 
+              onClick={() => onAskDelete(emp.id)}
+              className="text-slate-500 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 bg-white shadow-sm"
+              aria-label="Delete Employee"
+            >
+              <span className="material-symbols-outlined text-sm">delete</span>
+            </button>
+            <div className="pointer-events-none absolute right-0 top-full mt-2 hidden whitespace-nowrap rounded-lg bg-slate-900/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm group-hover/action:block">
+              Delete employee
+            </div>
+          </div>
+        </div>
+
+        <div className="relative mb-4">
+          <img src={emp.avatar} alt={emp.fullName} className="h-24 w-24 rounded-full object-cover shadow-lg ring-4 ring-slate-50 transition-transform group-hover:scale-105" />
+          <div className={`absolute bottom-0 right-0 h-5 w-5 rounded-full border-[3px] border-white ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'On Leave' ? 'bg-amber-400' : 'bg-rose-500'}`} />
+        </div>
+        
+        <p className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">{emp.id}</p>
+        <h3 className="text-base font-bold text-slate-900">{emp.fullName}</h3>
+        <p className="text-sm text-slate-500 mb-1 font-medium">{emp.role}</p>
+        <span className="mb-4 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+          {emp.department}
+        </span>
+        
+        <div className="mt-auto w-full space-y-3 pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+            <span className="material-symbols-outlined text-sm text-slate-400">location_on</span>
+            <span>{emp.location || 'Remote'}</span>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+            <span className="material-symbols-outlined text-sm text-slate-400">calendar_month</span>
+            <span>Joined {emp.joinedDate}</span>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
+            <span className="material-symbols-outlined text-sm text-slate-400">mail</span>
+            <span className="truncate max-w-[150px]">{emp.email}</span>
+          </div>
+          
+          <button 
+            onClick={() => onEdit(emp)}
+            className="w-full rounded-lg bg-slate-900 text-white py-2 text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">edit</span>
+            Edit Profile
+          </button>
+        </div>
+    </div>
+  );
+});
 
 const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdateEmployee, onDeleteEmployee }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,7 +142,26 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
       }
     };
     loadAttendanceSummary();
+
+    const handleFocus = () => loadAttendanceSummary();
+    const handleAttendanceUpdated = () => loadAttendanceSummary();
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('attendance:updated', handleAttendanceUpdated as EventListener);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('attendance:updated', handleAttendanceUpdated as EventListener);
+    };
   }, []);
+
+  const attendanceById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const s of attendanceSummary || []) {
+      const id = (s?.id ?? '').toString().trim().toLowerCase();
+      if (!id) continue;
+      map.set(id, s);
+    }
+    return map;
+  }, [attendanceSummary]);
   
   const [newEmployee, setNewEmployee] = useState<{
     fullName: string;
@@ -61,40 +181,117 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
     status: 'Active',
     location: '',
     avatarUrl: '',
-    joinedDate: new Date().toISOString().split('T')[0],
+    joinedDate: (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })(),
     id: ''
   });
 
-  const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          emp.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = selectedDept === 'All' || emp.department === selectedDept;
-    
-    let matchesDate = true;
-    if (filterStartDate) {
-       matchesDate = matchesDate && emp.joinedDate >= filterStartDate;
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp => {
+      const matchesSearch = emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            emp.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesDept = selectedDept === 'All' || emp.department === selectedDept;
+
+      let matchesDate = true;
+      if (filterStartDate) {
+        matchesDate = matchesDate && emp.joinedDate >= filterStartDate;
+      }
+      if (filterEndDate) {
+        matchesDate = matchesDate && emp.joinedDate <= filterEndDate;
+      }
+
+      return matchesSearch && matchesDept && matchesDate;
+    });
+  }, [employees, filterEndDate, filterStartDate, searchTerm, selectedDept]);
+
+  const indexOfLastItem = useMemo(() => currentPage * itemsPerPage, [currentPage, itemsPerPage]);
+  const indexOfFirstItem = useMemo(() => indexOfLastItem - itemsPerPage, [indexOfLastItem, itemsPerPage]);
+  const currentEmployees = useMemo(() => filteredEmployees.slice(indexOfFirstItem, indexOfLastItem), [filteredEmployees, indexOfFirstItem, indexOfLastItem]);
+  const totalPages = useMemo(() => Math.ceil(filteredEmployees.length / itemsPerPage), [filteredEmployees.length, itemsPerPage]);
+
+  const stats = useMemo(() => {
+    return [
+      { 
+        label: 'Total Employees', 
+        value: employees.length, 
+        color: 'text-slate-900',
+        bg: 'bg-slate-50',
+        icon: 'groups',
+        iconColor: 'text-slate-900'
+      },
+      { 
+        label: 'Active', 
+        value: employees.filter(e => e.status === 'Active').length,
+        color: 'text-emerald-600',
+        bg: 'bg-emerald-50',
+        icon: 'check_circle',
+        iconColor: 'text-emerald-600'
+      },
+      { 
+        label: 'On Leave', 
+        value: employees.filter(e => e.status === 'On Leave').length,
+        color: 'text-blue-600',
+        bg: 'bg-blue-50',
+        icon: 'airplane_ticket',
+        iconColor: 'text-blue-600'
+      },
+      { 
+        label: 'Terminated', 
+        value: employees.filter(e => e.status === 'Terminated').length,
+        color: 'text-rose-600',
+        bg: 'bg-rose-50',
+        icon: 'block',
+        iconColor: 'text-rose-600'
+      },
+    ];
+  }, [employees]);
+
+  const handlePrevPage = useCallback(() => {
+    setCurrentPage(p => (p > 1 ? p - 1 : p));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(p => (p < totalPages ? p + 1 : p));
+  }, [totalPages]);
+
+  const handleOpenAdd = useCallback(() => setIsAddModalOpen(true), []);
+
+  const handleSearchChange = useCallback((val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  }, []);
+
+  const handleDeptChange = useCallback((val: string) => {
+    setSelectedDept(val);
+    setCurrentPage(1);
+  }, []);
+
+  const handleClearDates = useCallback(() => {
+    setFilterStartDate('');
+    setFilterEndDate('');
+  }, []);
+
+  const handleAskDelete = useCallback((id: string) => {
+    if (id && id.trim() !== '') {
+      setEmployeeToDelete(id);
+    } else {
+      alert('Cannot delete: Employee ID is missing!');
     }
-    if (filterEndDate) {
-       matchesDate = matchesDate && emp.joinedDate <= filterEndDate;
-    }
+  }, []);
 
-    return matchesSearch && matchesDept && matchesDate;
-  });
+  const handleViewProfile = useCallback((emp: Employee) => setSelectedEmployee(emp), []);
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentEmployees = filteredEmployees.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const handleEditProfile = useCallback((emp: Employee) => {
+    setEditEmployee({ ...emp });
+    setIsEditModalOpen(true);
+  }, []);
 
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     
     const employeeToAdd: any = {
@@ -123,16 +320,16 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         joinedDate: new Date().toISOString().split('T')[0],
         id: ''
     });
-  };
+  }, [newEmployee, onAddEmployee]);
 
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (employeeToDelete) {
       onDeleteEmployee(employeeToDelete);
       setEmployeeToDelete(null);
     }
-  };
+  }, [employeeToDelete, onDeleteEmployee]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
           const reader = new FileReader();
@@ -141,9 +338,9 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
           };
           reader.readAsDataURL(file);
       }
-  }
+  }, [newEmployee]);
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!editEmployee) return;
 
@@ -159,7 +356,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
     });
     setIsEditModalOpen(false);
     setEditEmployee(null);
-  };
+  }, [editEmployee, onUpdateEmployee]);
 
   const deptOptions = [
     { value: 'All', label: 'All Departments' },
@@ -187,10 +384,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
               type="text" 
               placeholder="Search people..." 
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1); 
-              }}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9 pr-4 py-2.5 h-10 w-full bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-all shadow-sm"
             />
           </div>
@@ -198,16 +392,13 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
           <div className="w-full sm:w-48">
             <Select 
               value={selectedDept} 
-              onChange={(val) => {
-                setSelectedDept(val);
-                setCurrentPage(1);
-              }} 
+              onChange={handleDeptChange}
               options={deptOptions} 
             />
           </div>
           
           <button 
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={handleOpenAdd}
             className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 h-10 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95 hover:-translate-y-0.5 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-lg">add</span>
@@ -217,49 +408,8 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-        {[
-          { 
-            label: 'Total Employees', 
-            value: employees.length, 
-            color: 'text-slate-900',
-            bg: 'bg-slate-50',
-            icon: 'groups',
-            iconColor: 'text-slate-900'
-          },
-          { 
-            label: 'Active', 
-            value: employees.filter(e => e.status === 'Active').length,
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50',
-            icon: 'check_circle',
-            iconColor: 'text-emerald-600'
-          },
-          { 
-            label: 'On Leave', 
-            value: employees.filter(e => e.status === 'On Leave').length,
-            color: 'text-blue-600',
-            bg: 'bg-blue-50',
-            icon: 'airplane_ticket',
-            iconColor: 'text-blue-600'
-          },
-          { 
-            label: 'Terminated', 
-            value: employees.filter(e => e.status === 'Terminated').length,
-            color: 'text-rose-600',
-            bg: 'bg-rose-50',
-            icon: 'block',
-            iconColor: 'text-rose-600'
-          },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-             <div>
-                <span className={`text-3xl font-bold ${stat.color} block tracking-tighter`}>{stat.value}</span>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 block">{stat.label}</span>
-             </div>
-             <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${stat.bg}`}>
-                <span className={`material-symbols-outlined text-2xl ${stat.iconColor}`}>{stat.icon}</span>
-             </div>
-          </div>
+        {stats.map((stat) => (
+          <StatCard key={stat.label} stat={stat} />
         ))}
       </div>
 
@@ -279,7 +429,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         </div>
         {(filterStartDate || filterEndDate) && (
           <button 
-            onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+            onClick={handleClearDates}
             className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700 font-bold px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors ml-2"
           >
             <span className="material-symbols-outlined text-sm">close</span>
@@ -292,88 +442,17 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         {currentEmployees.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {currentEmployees.map((emp) => {
-                const empAttendance = attendanceSummary?.find((s: any) => s.id === emp.id) || { present: 0, absent: 0, on_leave: 0 };
+                const empAttendance = attendanceById.get((emp.id || '').toLowerCase()) || { present: 0, absent: 0, on_leave: 0 };
                 return (
-              <div key={emp.id} className="group relative flex flex-col items-center rounded-2xl border border-slate-100 bg-white p-6 text-center shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 z-0 hover:z-10">
-                  {/* Attendance Days Badge (top-left, properly positioned) */}
-                  <div className="absolute left-2 top-2 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1 shadow-md z-10">
-                    <span className="material-symbols-outlined text-emerald-600 text-xs">check_circle</span>
-                    <span className="text-[10px] font-black text-emerald-700">{empAttendance.present || 0}d</span>
-                  </div>
-                  {/* Action buttons (eye, delete) */}
-                  <div className="absolute right-2 top-2 flex gap-1.5 z-10">
-                    <div className="relative group/action">
-                      <button 
-                        onClick={() => setSelectedEmployee(emp)} 
-                        className="text-slate-500 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50 bg-white shadow-sm"
-                        aria-label="View Profile"
-                      >
-                        <span className="material-symbols-outlined text-sm">visibility</span>
-                      </button>
-                      <div className="pointer-events-none absolute right-0 top-full mt-2 hidden whitespace-nowrap rounded-lg bg-slate-900/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm group-hover/action:block">
-                        View profile
-                      </div>
-                    </div>
-
-                    <div className="relative group/action">
-                      <button 
-                        onClick={() => {
-                          if (emp.id && emp.id.trim() !== '') {
-                            setEmployeeToDelete(emp.id);
-                          } else {
-                            alert('Cannot delete: Employee ID is missing!');
-                          }
-                        }} 
-                        className="text-slate-500 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 bg-white shadow-sm"
-                        aria-label="Delete Employee"
-                      >
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                      </button>
-                      <div className="pointer-events-none absolute right-0 top-full mt-2 hidden whitespace-nowrap rounded-lg bg-slate-900/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm group-hover/action:block">
-                        Delete employee
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="relative mb-4">
-                    <img src={emp.avatar} alt={emp.fullName} className="h-24 w-24 rounded-full object-cover shadow-lg ring-4 ring-slate-50 transition-transform group-hover:scale-105" />
-                    <div className={`absolute bottom-0 right-0 h-5 w-5 rounded-full border-[3px] border-white ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'On Leave' ? 'bg-amber-400' : 'bg-rose-500'}`} />
-                  </div>
-                  
-                  <p className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">{emp.id}</p>
-                  <h3 className="text-base font-bold text-slate-900">{emp.fullName}</h3>
-                  <p className="text-sm text-slate-500 mb-1 font-medium">{emp.role}</p>
-                  <span className="mb-4 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                    {emp.department}
-                  </span>
-                  
-                  <div className="mt-auto w-full space-y-3 pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
-                      <span className="material-symbols-outlined text-sm text-slate-400">location_on</span>
-                      <span>{emp.location || 'Remote'}</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
-                      <span className="material-symbols-outlined text-sm text-slate-400">calendar_month</span>
-                      <span>Joined {emp.joinedDate}</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
-                      <span className="material-symbols-outlined text-sm text-slate-400">mail</span>
-                      <span className="truncate max-w-[150px]">{emp.email}</span>
-                    </div>
-                    
-                    <button 
-                      onClick={() => {
-                        setEditEmployee({...emp});
-                        setIsEditModalOpen(true);
-                      }}
-                      className="w-full rounded-lg bg-slate-900 text-white py-2 text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-sm">edit</span>
-                      Edit Profile
-                    </button>
-                  </div>
-              </div>
-              );
+                  <EmployeeCard
+                    key={emp.id}
+                    emp={emp}
+                    empAttendance={empAttendance}
+                    onView={handleViewProfile}
+                    onAskDelete={handleAskDelete}
+                    onEdit={handleEditProfile}
+                  />
+                );
               })}
           </div>
         ) : (
@@ -593,8 +672,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                       </div>
                       {/* Always show attendance cards, even if all are zero */}
                       {(() => {
-                      let att = attendanceSummary && attendanceSummary.find((s: any) => s.id === selectedEmployee.id);
-                      if (!att) att = { present: 0, absent: 0, on_leave: 0 };
+                      const att = attendanceById.get((selectedEmployee.id || '').toLowerCase()) || { present: 0, absent: 0, on_leave: 0 };
                       return <>
                         <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
                           <p className="text-[10px] text-emerald-600 font-medium uppercase">Present</p>

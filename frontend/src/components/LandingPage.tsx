@@ -1,15 +1,32 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useScroll, useTransform, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 interface LandingPageProps {
   onEnter: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
+  const prefersReducedMotion = useReducedMotion();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(media.matches);
+    update();
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', update);
+      return () => media.removeEventListener('change', update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
+  const reduceMotion = prefersReducedMotion || isMobile;
+
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
-  const y2 = useTransform(scrollY, [0, 500], [0, -150]);
+  const y1 = useTransform(scrollY, [0, 500], [0, reduceMotion ? 0 : 200]);
+  const y2 = useTransform(scrollY, [0, 500], [0, reduceMotion ? 0 : -150]);
   
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -22,132 +39,231 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
     <div className="min-h-screen bg-white relative overflow-hidden font-sans selection:bg-slate-900 selection:text-white">
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-          <motion.div 
-            animate={{ x: [0, 30, 0], y: [0, 50, 0], scale: [1, 1.1, 1] }}
-            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[-10%] right-[-5%] w-[800px] h-[800px] rounded-full bg-gradient-to-br from-blue-50/80 to-indigo-50/80 blur-[100px]" 
-          />
-          <motion.div 
-            animate={{ x: [0, -40, 0], y: [0, 30, 0], scale: [1, 1.2, 1] }}
-            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute top-[30%] left-[-10%] w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-purple-50/80 to-pink-50/80 blur-[100px]" 
-          />
-          <motion.div 
-             style={{ y: y1 }}
-             className="absolute bottom-[-10%] right-[20%] w-[500px] h-[500px] rounded-full bg-gradient-to-tl from-emerald-50/60 to-teal-50/60 blur-[120px]" 
-          />
+          {reduceMotion ? (
+            <>
+              <div className="absolute top-[-10%] right-[-5%] w-[800px] h-[800px] rounded-full bg-gradient-to-br from-blue-50/80 to-indigo-50/80 blur-[100px]" />
+              <div className="absolute top-[30%] left-[-10%] w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-purple-50/80 to-pink-50/80 blur-[100px]" />
+              <div className="absolute bottom-[-10%] right-[20%] w-[500px] h-[500px] rounded-full bg-gradient-to-tl from-emerald-50/60 to-teal-50/60 blur-[120px]" />
+            </>
+          ) : (
+            <>
+              <motion.div 
+                animate={{ x: [0, 30, 0], y: [0, 50, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-[-10%] right-[-5%] w-[800px] h-[800px] rounded-full bg-gradient-to-br from-blue-50/80 to-indigo-50/80 blur-[100px]" 
+              />
+              <motion.div 
+                animate={{ x: [0, -40, 0], y: [0, 30, 0], scale: [1, 1.2, 1] }}
+                transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                className="absolute top-[30%] left-[-10%] w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-purple-50/80 to-pink-50/80 blur-[100px]" 
+              />
+              <motion.div 
+                 style={{ y: y1 }}
+                 className="absolute bottom-[-10%] right-[20%] w-[500px] h-[500px] rounded-full bg-gradient-to-tl from-emerald-50/60 to-teal-50/60 blur-[120px]" 
+              />
+            </>
+          )}
       </div>
 
       {/* Navbar */}
-      <motion.nav 
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/50 bg-white/55 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/40"
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center gap-4">
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
-              <span className="material-symbols-outlined text-xl">blur_on</span>
-            </div>
-            <span className="text-sm font-black uppercase tracking-[0.15em] text-slate-900">HRMS LITE</span>
-          </div>
-
-          <div className="hidden md:flex flex-1 items-center justify-end gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-white/40 bg-gradient-to-b from-white/30 to-white/10 px-2 py-1 backdrop-blur-2xl shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/5">
-              <button onClick={() => scrollToSection('about')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">About</button>
-              <button onClick={() => scrollToSection('features')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Features</button>
-              <button onClick={() => scrollToSection('tech')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Tech Stack</button>
+      {reduceMotion ? (
+        <nav
+          className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/50 bg-white/55 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/40"
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center gap-4">
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
+                <span className="material-symbols-outlined text-xl">blur_on</span>
+              </div>
+              <span className="text-sm font-black uppercase tracking-[0.15em] text-slate-900">HRMS LITE</span>
             </div>
 
-            <button 
-              onClick={onEnter}
-              className="hidden sm:block rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95"
-            >
-              Launch App
-            </button>
+            <div className="flex flex-1 items-center justify-end md:hidden">
+              <button
+                onClick={onEnter}
+                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-slate-900/20 active:scale-95 transition-transform"
+              >
+                Launch App
+              </button>
+            </div>
+
+            <div className="hidden md:flex flex-1 items-center justify-end gap-3">
+              <div className="flex items-center gap-2 rounded-full border border-white/40 bg-gradient-to-b from-white/30 to-white/10 px-2 py-1 backdrop-blur-2xl shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/5">
+                <button onClick={() => scrollToSection('about')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">About</button>
+                <button onClick={() => scrollToSection('features')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Features</button>
+                <button onClick={() => scrollToSection('tech')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Tech Stack</button>
+              </div>
+
+              <button 
+                onClick={onEnter}
+                className="hidden sm:block rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95"
+              >
+                Launch App
+              </button>
+            </div>
           </div>
-        </div>
-      </motion.nav>
+        </nav>
+      ) : (
+        <motion.nav 
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/50 bg-white/55 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/40"
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 h-16 flex items-center gap-4">
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
+                <span className="material-symbols-outlined text-xl">blur_on</span>
+              </div>
+              <span className="text-sm font-black uppercase tracking-[0.15em] text-slate-900">HRMS LITE</span>
+            </div>
+
+            <div className="flex flex-1 items-center justify-end md:hidden">
+              <button
+                onClick={onEnter}
+                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-slate-900/20 active:scale-95 transition-transform"
+              >
+                Launch App
+              </button>
+            </div>
+
+            <div className="hidden md:flex flex-1 items-center justify-end gap-3">
+              <div className="flex items-center gap-2 rounded-full border border-white/40 bg-gradient-to-b from-white/30 to-white/10 px-2 py-1 backdrop-blur-2xl shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/5">
+                <button onClick={() => scrollToSection('about')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">About</button>
+                <button onClick={() => scrollToSection('features')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Features</button>
+                <button onClick={() => scrollToSection('tech')} className="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/70 transition-all">Tech Stack</button>
+              </div>
+
+              <button 
+                onClick={onEnter}
+                className="hidden sm:block rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:-translate-y-0.5 transition-all active:scale-95"
+              >
+                Launch App
+              </button>
+            </div>
+          </div>
+        </motion.nav>
+      )}
 
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-b from-white via-slate-50 to-white isolate">
         {/* Blurry animated background elements */}
-        <motion.div 
-          animate={{ x: [0, 30, 0], y: [0, 20, 0], scale: [1, 1.05, 1] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -z-10 top-[8%] left-[4%] w-[520px] h-[520px] rounded-full bg-blue-200/70 blur-[90px] pointer-events-none mix-blend-multiply"
-        />
-        <motion.div 
-          animate={{ x: [0, -25, 0], y: [0, -15, 0], scale: [1, 1.08, 1] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
-          className="absolute -z-10 top-[22%] right-[6%] w-[480px] h-[480px] rounded-full bg-indigo-200/65 blur-[85px] pointer-events-none mix-blend-multiply"
-        />
-        <motion.div 
-          animate={{ x: [0, 20, 0], y: [0, -25, 0], scale: [1, 1.03, 1] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute -z-10 bottom-[18%] left-[12%] w-[420px] h-[420px] rounded-full bg-purple-200/55 blur-[80px] pointer-events-none mix-blend-multiply"
-        />
+        {reduceMotion ? (
+          <>
+            <div className="absolute -z-10 top-[8%] left-[4%] w-[520px] h-[520px] rounded-full bg-blue-200/70 blur-[90px] pointer-events-none mix-blend-multiply" />
+            <div className="absolute -z-10 top-[22%] right-[6%] w-[480px] h-[480px] rounded-full bg-indigo-200/65 blur-[85px] pointer-events-none mix-blend-multiply" />
+            <div className="absolute -z-10 bottom-[18%] left-[12%] w-[420px] h-[420px] rounded-full bg-purple-200/55 blur-[80px] pointer-events-none mix-blend-multiply" />
+          </>
+        ) : (
+          <>
+            <motion.div 
+              animate={{ x: [0, 30, 0], y: [0, 20, 0], scale: [1, 1.05, 1] }}
+              transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -z-10 top-[8%] left-[4%] w-[520px] h-[520px] rounded-full bg-blue-200/70 blur-[90px] pointer-events-none mix-blend-multiply"
+            />
+            <motion.div 
+              animate={{ x: [0, -25, 0], y: [0, -15, 0], scale: [1, 1.08, 1] }}
+              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+              className="absolute -z-10 top-[22%] right-[6%] w-[480px] h-[480px] rounded-full bg-indigo-200/65 blur-[85px] pointer-events-none mix-blend-multiply"
+            />
+            <motion.div 
+              animate={{ x: [0, 20, 0], y: [0, -25, 0], scale: [1, 1.03, 1] }}
+              transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              className="absolute -z-10 bottom-[18%] left-[12%] w-[420px] h-[420px] rounded-full bg-purple-200/55 blur-[80px] pointer-events-none mix-blend-multiply"
+            />
+          </>
+        )}
         
         <div className="relative z-10 mx-auto max-w-7xl px-6 pt-32 pb-20 text-center lg:pt-48">
-          <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="inline-flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 backdrop-blur-md mb-10 shadow-sm border-t-slate-100"
-          >
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-            <span>Powered by OPEN ROUTER</span>
-          </motion.div>
-          
-          <motion.h1 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-5xl text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl mb-8 leading-[0.95]"
-          >
-            HRMS evolved for <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600">intelligent teams.</span>
-          </motion.h1>
-          
-          <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="mx-auto max-w-2xl text-lg sm:text-xl text-slate-600 mb-12 leading-relaxed font-medium tracking-tight"
-          >
-             Redefining workforce management by blending modular design with advanced intelligence. 
-             Automate logs, manage people, and scale your culture effortlessly.
-          </motion.p>
-  
-          <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-5"
-          >
-            <button 
-              onClick={onEnter}
-              className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-bold text-sm tracking-widest uppercase hover:bg-blue-600 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] transition-all duration-300 flex items-center gap-3 group active:scale-95"
-            >
-              Get Started
-              <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
-            </button>
-            <button className="h-14 px-10 rounded-2xl bg-white text-slate-800 border border-slate-200 font-bold text-sm tracking-widest uppercase hover:bg-slate-50 hover:border-slate-300 transition-all duration-300 flex items-center gap-3 shadow-sm active:scale-95">
-               <span className="material-symbols-outlined text-xl text-blue-600">play_circle</span>
-               Watch Demo
-            </button>
-          </motion.div>
+          {reduceMotion ? (
+            <>
+              <div className="inline-flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 backdrop-blur-md mb-10 shadow-sm border-t-slate-100">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                <span>Powered by OPEN ROUTER</span>
+              </div>
+
+              <h1 className="mx-auto max-w-5xl text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl mb-8 leading-[0.95]">
+                HRMS evolved for <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600">intelligent teams.</span>
+              </h1>
+
+              <p className="mx-auto max-w-2xl text-lg sm:text-xl text-slate-600 mb-12 leading-relaxed font-medium tracking-tight">
+                Redefining workforce management by blending modular design with advanced intelligence. 
+                Automate logs, manage people, and scale your culture effortlessly.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
+                <button 
+                  onClick={onEnter}
+                  className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-bold text-sm tracking-widest uppercase hover:bg-blue-600 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] transition-all duration-300 flex items-center gap-3 group active:scale-95"
+                >
+                  Get Started
+                  <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+                </button>
+                <button className="h-14 px-10 rounded-2xl bg-white text-slate-800 border border-slate-200 font-bold text-sm tracking-widest uppercase hover:bg-slate-50 hover:border-slate-300 transition-all duration-300 flex items-center gap-3 shadow-sm active:scale-95">
+                  <span className="material-symbols-outlined text-xl text-blue-600">play_circle</span>
+                  Watch Demo
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="inline-flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 backdrop-blur-md mb-10 shadow-sm border-t-slate-100"
+              >
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                <span>Powered by OPEN ROUTER</span>
+              </motion.div>
+              
+              <motion.h1 
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className="mx-auto max-w-5xl text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl mb-8 leading-[0.95]"
+              >
+                HRMS evolved for <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600">intelligent teams.</span>
+              </motion.h1>
+              
+              <motion.p 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  className="mx-auto max-w-2xl text-lg sm:text-xl text-slate-600 mb-12 leading-relaxed font-medium tracking-tight"
+              >
+                 Redefining workforce management by blending modular design with advanced intelligence. 
+                 Automate logs, manage people, and scale your culture effortlessly.
+              </motion.p>
+      
+              <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  className="flex flex-col sm:flex-row items-center justify-center gap-5"
+              >
+                <button 
+                  onClick={onEnter}
+                  className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-bold text-sm tracking-widest uppercase hover:bg-blue-600 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] transition-all duration-300 flex items-center gap-3 group active:scale-95"
+                >
+                  Get Started
+                  <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+                </button>
+                <button className="h-14 px-10 rounded-2xl bg-white text-slate-800 border border-slate-200 font-bold text-sm tracking-widest uppercase hover:bg-slate-50 hover:border-slate-300 transition-all duration-300 flex items-center gap-3 shadow-sm active:scale-95">
+                   <span className="material-symbols-outlined text-xl text-blue-600">play_circle</span>
+                   Watch Demo
+                </button>
+              </motion.div>
+            </>
+          )}
         </div>
       </div>
 
         {/* Dashboard Preview */}
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.95, rotateX: 10 }}
-            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-            transition={{ duration: 1.2, delay: 0.6, ease: "easeOut" }}
-            className="mt-16 relative mx-auto max-w-6xl perspective-[2000px] mb-10 group"
-        >
+        {reduceMotion ? (
+          <div className="mt-16 relative mx-auto max-w-6xl perspective-[2000px] mb-10 group">
             <div className="rounded-2xl border border-slate-200/60 bg-white/50 p-2 shadow-2xl backdrop-blur-sm transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
                 <div className="rounded-xl overflow-hidden bg-slate-50 aspect-[16/9] relative shadow-inner group cursor-pointer">
                     <img 
@@ -158,12 +274,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                      <div className="absolute inset-0 bg-slate-900/5 group-hover:bg-transparent transition-colors"></div>
                      
                      {/* Overlay Card - Smart Analytics */}
-                     <motion.div 
-                        initial={{ opacity: 0, y: 30 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 1, duration: 0.8 }}
-                        className="absolute bottom-8 left-8 bg-white/95 backdrop-blur-xl p-6 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/40 max-w-[280px] z-20"
+                     <div
+                        className="absolute bottom-3 left-3 sm:bottom-8 sm:left-8 bg-white/95 backdrop-blur-xl p-3 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/40 max-w-[200px] sm:max-w-[280px] z-20"
                      >
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-3">
@@ -182,10 +294,56 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                                 "3 employees on leave today. Suggesting meeting reschedule for optimal team availability."
                             </p>
                         </div>
-                     </motion.div>
+                     </div>
                 </div>
             </div>
-        </motion.div>
+          </div>
+        ) : (
+          <motion.div 
+              initial={{ opacity: 0, scale: 0.95, rotateX: 10 }}
+              animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+              transition={{ duration: 1.2, delay: 0.6, ease: "easeOut" }}
+              className="mt-16 relative mx-auto max-w-6xl perspective-[2000px] mb-10 group"
+          >
+              <div className="rounded-2xl border border-slate-200/60 bg-white/50 p-2 shadow-2xl backdrop-blur-sm transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
+                  <div className="rounded-xl overflow-hidden bg-slate-50 aspect-[16/9] relative shadow-inner group cursor-pointer">
+                      <img 
+                          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=2400&q=80" 
+                          alt="App Dashboard" 
+                          className="object-cover w-full h-full hover:scale-105 transition-transform duration-700"
+                      />
+                       <div className="absolute inset-0 bg-slate-900/5 group-hover:bg-transparent transition-colors"></div>
+                       
+                       {/* Overlay Card - Smart Analytics */}
+                       <motion.div 
+                          initial={{ opacity: 0, y: 30 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-100px" }}
+                          transition={{ duration: 0.8, delay: 0.4 }}
+                          className="absolute bottom-3 left-3 sm:bottom-8 sm:left-8 bg-white/95 backdrop-blur-xl p-3 sm:p-6 rounded-[1.75rem] sm:rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/40 max-w-[200px] sm:max-w-[280px] z-20"
+                       >
+                          <div className="flex flex-col gap-4">
+                              <div className="flex items-center gap-3">
+                                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                                      <span className="material-symbols-outlined text-2xl">insights</span>
+                                  </div>
+                                  <div>
+                                      <h3 className="font-black text-slate-900 text-xs uppercase tracking-widest">Analytics Core</h3>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                          <span className="text-[10px] font-bold text-emerald-600">Live Insights</span>
+                                      </div>
+                                  </div>
+                              </div>
+                              <p className="text-xs text-slate-600 leading-relaxed font-medium bg-slate-50/80 p-3 rounded-xl border border-slate-100 italic">
+                                  "3 employees on leave today. Suggesting meeting reschedule for optimal team availability."
+                              </p>
+                          </div>
+                       </motion.div>
+                  </div>
+              </div>
+          </motion.div>
+        )}
       
       {/* Infinite Logo Scroll - Professional Polish */}
       <div className="py-16 border-y border-slate-100 bg-slate-50/50 overflow-hidden relative">
@@ -200,8 +358,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                   <div className="absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-slate-50/50 to-transparent z-10 pointer-events-none"></div>
                   
                   <motion.div 
-                    animate={{ x: ["0%", "-50%"] }}
-                    transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
+                    animate={reduceMotion ? undefined : { x: ["0%", "-50%"] }}
+                    transition={reduceMotion ? undefined : { duration: isMobile ? 80 : 50, repeat: Infinity, ease: "linear" }}
                     className="flex gap-28 whitespace-nowrap items-center"
                   >
                     {[...Array(2)].map((_, i) => (
@@ -239,12 +397,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
       <section id="about" className="py-20 relative overflow-hidden bg-slate-50/30">
           <div className="mx-auto max-w-7xl px-6">
               <div className="flex flex-col lg:flex-row items-center gap-16">
-                  <motion.div 
-                      initial={{ opacity: 0, x: -30 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      className="flex-1 text-left"
-                  >
+                  {reduceMotion ? (
+                    <div className="flex-1 text-left">
                       <h2 className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mb-4">Intelligent Operations</h2>
                       <h3 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl mb-6">
                           Manage your workforce <br />
@@ -271,14 +425,45 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                       >
                         Explore Workforce Tools
                       </button>
-                  </motion.div>
+                    </div>
+                  ) : (
+                    <motion.div 
+                        initial={{ opacity: 0, x: -30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        className="flex-1 text-left"
+                    >
+                        <h2 className="text-sm font-bold text-blue-600 tracking-[0.2em] uppercase mb-4">Intelligent Operations</h2>
+                        <h3 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl mb-6">
+                            Manage your workforce <br />
+                            <span className="text-blue-600">without the chaos.</span>
+                        </h3>
+                        <p className="text-lg text-slate-600 leading-relaxed mb-8">
+                            HRMS Lite isn't just a database; it's a productivity powerhouse. By combining real-time attendance tracking with OpenRouter intelligence, we turn raw data into actionable insights that help your team thrive. 
+                        </p>
+                        <ul className="space-y-4 mb-10">
+                            {[
+                                { icon: 'bolt', text: 'Automated attendance reporting' },
+                                { icon: 'auto_awesome', text: 'AI-powered leave analysis' },
+                                { icon: 'shield', text: 'Privacy-focused data handling' }
+                            ].map((item, idx) => (
+                                <li key={idx} className="flex items-center gap-3 text-slate-700 font-bold text-sm">
+                                    <span className="material-symbols-outlined text-blue-500 font-black">{item.icon}</span>
+                                    {item.text}
+                                </li>
+                            ))}
+                        </ul>
+                        <button 
+                          onClick={onEnter}
+                          className="h-12 px-6 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                        >
+                          Explore Workforce Tools
+                        </button>
+                    </motion.div>
+                  )}
                   
-                  <motion.div 
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
-                      className="flex-1 relative"
-                  >
+                  {reduceMotion ? (
+                    <div className="flex-1 relative">
                       <div className="absolute -inset-6 bg-gradient-to-tr from-blue-100/50 to-indigo-100/50 rounded-[3rem] blur-3xl opacity-60"></div>
                       <div className="relative z-10 p-2 bg-white/50 backdrop-blur-sm border border-white rounded-[2.5rem] shadow-2xl">
                         <img 
@@ -294,7 +479,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                             </div>
                         </div>
                       </div>
-                  </motion.div>
+                    </div>
+                  ) : (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        className="flex-1 relative"
+                    >
+                        <div className="absolute -inset-6 bg-gradient-to-tr from-blue-100/50 to-indigo-100/50 rounded-[3rem] blur-3xl opacity-60"></div>
+                        <div className="relative z-10 p-2 bg-white/50 backdrop-blur-sm border border-white rounded-[2.5rem] shadow-2xl">
+                          <img 
+                              src="https://images.unsplash.com/photo-1551434678-e076c223a692?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" 
+                              alt="Team Collaboration" 
+                              className="rounded-[2rem] object-cover aspect-video shadow-inner"
+                          />
+                          {/* Static Status Pill Overlay */}
+                          <div className="absolute top-8 right-8 bg-white/90 backdrop-blur p-3 rounded-2xl shadow-xl border border-white/50 animate-bounce [animation-duration:3s]">
+                              <div className="flex items-center gap-2">
+                                  <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Active Insight</span>
+                              </div>
+                          </div>
+                        </div>
+                    </motion.div>
+                  )}
               </div>
           </div>
       </section>
@@ -357,23 +566,39 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                           iconColor: 'bg-cyan-50 text-cyan-600'
                       }
                   ].map((feature, i) => (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: i * 0.1 }}
-                        key={i} 
-                        className="group relative p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-500 overflow-hidden"
-                      >
-                          <div className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
-                          <div className="relative z-10">
-                            <div className={`h-16 w-16 rounded-2xl border border-white/50 ${feature.iconColor} flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-all duration-500`}>
-                                <span className="material-symbols-outlined text-3xl">{feature.icon}</span>
+                      reduceMotion ? (
+                        <div 
+                          key={i}
+                          className="group relative p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-500 overflow-hidden"
+                        >
+                            <div className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+                            <div className="relative z-10">
+                              <div className={`h-16 w-16 rounded-2xl border border-white/50 ${feature.iconColor} flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-all duration-500`}>
+                                  <span className="material-symbols-outlined text-3xl">{feature.icon}</span>
+                              </div>
+                              <h3 className="text-xl font-bold text-slate-900 mb-4 tracking-tight">{feature.title}</h3>
+                              <p className="text-slate-500 leading-relaxed font-medium text-sm">{feature.desc}</p>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4 tracking-tight">{feature.title}</h3>
-                            <p className="text-slate-500 leading-relaxed font-medium text-sm">{feature.desc}</p>
-                          </div>
-                      </motion.div>
+                        </div>
+                      ) : (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.1 }}
+                          key={i} 
+                          className="group relative p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-500 overflow-hidden"
+                        >
+                            <div className={`absolute inset-0 bg-gradient-to-br ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+                            <div className="relative z-10">
+                              <div className={`h-16 w-16 rounded-2xl border border-white/50 ${feature.iconColor} flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-all duration-500`}>
+                                  <span className="material-symbols-outlined text-3xl">{feature.icon}</span>
+                              </div>
+                              <h3 className="text-xl font-bold text-slate-900 mb-4 tracking-tight">{feature.title}</h3>
+                              <p className="text-slate-500 leading-relaxed font-medium text-sm">{feature.desc}</p>
+                            </div>
+                        </motion.div>
+                      )
                   ))}
               </div>
           </div>
@@ -411,36 +636,66 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                         { x: "0%", y: "35%" }, { x: "100%", y: "35%" },
                         { x: "0%", y: "65%" }, { x: "100%", y: "65%" }
                     ].map((pos, idx) => (
-                        <motion.line 
+                        reduceMotion ? (
+                          <line
                             key={idx}
-                            initial={{ pathLength: 0, opacity: 0 }}
-                            whileInView={{ pathLength: 1, opacity: 1 }}
-                            transition={{ duration: 2.5, delay: 0.5 + idx * 0.1, ease: "easeOut" }}
-                            x1="50%" y1="50%" x2={pos.x} y2={pos.y} 
-                            stroke="url(#radiantWire)" 
+                            x1="50%" y1="50%" x2={pos.x} y2={pos.y}
+                            stroke="url(#radiantWire)"
                             strokeWidth="2"
                             strokeLinecap="round"
-                        />
+                            opacity={1}
+                          />
+                        ) : (
+                          <motion.line 
+                              key={idx}
+                              initial={{ pathLength: 0, opacity: 0 }}
+                              whileInView={{ pathLength: 1, opacity: 1 }}
+                              transition={{ duration: 2.5, delay: 0.5 + idx * 0.1, ease: "easeOut" }}
+                              x1="50%" y1="50%" x2={pos.x} y2={pos.y} 
+                              stroke="url(#radiantWire)" 
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                          />
+                        )
                     ))}
                     
                     {/* Background Orbits */}
-                    <motion.circle initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} cx="50%" cy="50%" r="200" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="5 5" className="opacity-5" />
-                    <motion.circle initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} cx="50%" cy="50%" r="300" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="5 5" className="opacity-5" />
+                    {reduceMotion ? (
+                      <>
+                        <circle cx="50%" cy="50%" r="200" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="5 5" className="opacity-5" />
+                        <circle cx="50%" cy="50%" r="300" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="5 5" className="opacity-5" />
+                      </>
+                    ) : (
+                      <>
+                        <motion.circle initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} cx="50%" cy="50%" r="200" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="5 5" className="opacity-5" />
+                        <motion.circle initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} cx="50%" cy="50%" r="300" fill="none" stroke="white" strokeWidth="0.5" strokeDasharray="5 5" className="opacity-5" />
+                      </>
+                    )}
                 </svg>
 
                 {/* Center Node - The Energy Source */}
-                <motion.div 
-                    initial={{ scale: 0, rotate: -45 }}
-                    whileInView={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", damping: 12 }}
-                    className="relative z-30 h-28 w-28 rounded-full bg-blue-600 flex items-center justify-center shadow-[0_0_100px_rgba(37,99,235,0.6)] border-4 border-white/30 backdrop-blur-md group"
-                >
-                    <div className="absolute inset-0 rounded-full bg-white/10 animate-ping opacity-20"></div>
-                    <div className="text-center relative z-10">
-                        <span className="material-symbols-outlined text-4xl mb-1 text-white drop-shadow-lg">blur_on</span>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Core Hub</p>
-                    </div>
-                </motion.div>
+                {reduceMotion ? (
+                  <div className="relative z-30 h-28 w-28 rounded-full bg-blue-600 flex items-center justify-center shadow-[0_0_100px_rgba(37,99,235,0.6)] border-4 border-white/30 backdrop-blur-md group">
+                      <div className="absolute inset-0 rounded-full bg-white/10 animate-ping opacity-20"></div>
+                      <div className="text-center relative z-10">
+                          <span className="material-symbols-outlined text-4xl mb-1 text-white drop-shadow-lg">blur_on</span>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Core Hub</p>
+                      </div>
+                  </div>
+                ) : (
+                  <motion.div 
+                      initial={{ scale: 0, rotate: -45 }}
+                      whileInView={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", damping: 12 }}
+                      className="relative z-30 h-28 w-28 rounded-full bg-blue-600 flex items-center justify-center shadow-[0_0_100px_rgba(37,99,235,0.6)] border-4 border-white/30 backdrop-blur-md group"
+                  >
+                      <div className="absolute inset-0 rounded-full bg-white/10 animate-ping opacity-20"></div>
+                      <div className="text-center relative z-10">
+                          <span className="material-symbols-outlined text-4xl mb-1 text-white drop-shadow-lg">blur_on</span>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Core Hub</p>
+                      </div>
+                  </motion.div>
+                )}
 
                 {/* Satellite Nodes with Hover Popups */}
                 {[
@@ -453,34 +708,62 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                     { id: 7, name: 'Framer', logo: 'framer-motion.svg', color: 'text-pink-400', pos: 'bottom-[35%] left-[0%]', desc: 'Buttery smooth physics-based motion & layouts.', tagline: 'MOTION' },
                     { id: 8, name: 'Pydantic', logo: 'Pydantic.svg', color: 'text-rose-400', pos: 'bottom-[35%] right-[0%]', desc: 'Strict data validation for backend integrity.', tagline: 'VALIDATION' },
                 ].map((tech, i) => (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        key={tech.id} 
+                    reduceMotion ? (
+                      <div 
+                        key={tech.id}
                         className={`absolute ${tech.pos} group cursor-default z-20`}
-                    >
-                        {/* Connection Line to Center (Mockup) */}
-                        <div className="relative">
-                            <div className="h-16 w-32 md:w-40 rounded-2xl bg-slate-900/40 border border-white/5 backdrop-blur-md p-4 flex items-center gap-3 hover:border-white/20 transition-all hover:bg-slate-900/60 shadow-xl">
-                                {tech.logo ? (
-                                    <img src={`/logos/${tech.logo}`} alt={tech.name} className="h-8 w-8 object-contain" />
-                                ) : (
-                                    <span className={`material-symbols-outlined text-2xl ${tech.color}`}>{tech.name ? tech.name.charAt(0) : ''}</span>
-                                )}
-                                <div>
-                                    <h4 className="font-bold text-xs">{tech.name}</h4>
-                                    <p className="text-[8px] text-slate-500 uppercase tracking-widest font-bold">{tech.tagline}</p>
-                                </div>
-                            </div>
-                            
-                            {/* Hover Popup */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 p-3 rounded-xl bg-white text-slate-900 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 pointer-events-none shadow-2xl z-50">
-                                <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45"></div>
-                                <p className="text-[11px] leading-relaxed font-medium">{tech.desc}</p>
-                            </div>
-                        </div>
-                    </motion.div>
+                      >
+                          {/* Connection Line to Center (Mockup) */}
+                          <div className="relative">
+                              <div className="h-16 w-32 md:w-40 rounded-2xl bg-slate-900/40 border border-white/5 backdrop-blur-md p-4 flex items-center gap-3 hover:border-white/20 transition-all hover:bg-slate-900/60 shadow-xl">
+                                  {tech.logo ? (
+                                      <img src={`/logos/${tech.logo}`} alt={tech.name} className="h-8 w-8 object-contain" />
+                                  ) : (
+                                      <span className={`material-symbols-outlined text-2xl ${tech.color}`}>{tech.name ? tech.name.charAt(0) : ''}</span>
+                                  )}
+                                  <div>
+                                      <h4 className="font-bold text-xs">{tech.name}</h4>
+                                      <p className="text-[8px] text-slate-500 uppercase tracking-widest font-bold">{tech.tagline}</p>
+                                  </div>
+                              </div>
+                              
+                              {/* Hover Popup */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 p-3 rounded-xl bg-white text-slate-900 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 pointer-events-none shadow-2xl z-50">
+                                  <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45"></div>
+                                  <p className="text-[11px] leading-relaxed font-medium">{tech.desc}</p>
+                              </div>
+                          </div>
+                      </div>
+                    ) : (
+                      <motion.div 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.1 }}
+                          key={tech.id} 
+                          className={`absolute ${tech.pos} group cursor-default z-20`}
+                      >
+                          {/* Connection Line to Center (Mockup) */}
+                          <div className="relative">
+                              <div className="h-16 w-32 md:w-40 rounded-2xl bg-slate-900/40 border border-white/5 backdrop-blur-md p-4 flex items-center gap-3 hover:border-white/20 transition-all hover:bg-slate-900/60 shadow-xl">
+                                  {tech.logo ? (
+                                      <img src={`/logos/${tech.logo}`} alt={tech.name} className="h-8 w-8 object-contain" />
+                                  ) : (
+                                      <span className={`material-symbols-outlined text-2xl ${tech.color}`}>{tech.name ? tech.name.charAt(0) : ''}</span>
+                                  )}
+                                  <div>
+                                      <h4 className="font-bold text-xs">{tech.name}</h4>
+                                      <p className="text-[8px] text-slate-500 uppercase tracking-widest font-bold">{tech.tagline}</p>
+                                  </div>
+                              </div>
+                              
+                              {/* Hover Popup */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 p-3 rounded-xl bg-white text-slate-900 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 pointer-events-none shadow-2xl z-50">
+                                  <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45"></div>
+                                  <p className="text-[11px] leading-relaxed font-medium">{tech.desc}</p>
+                              </div>
+                          </div>
+                      </motion.div>
+                    )
                 ))}
              </div>
           </div>

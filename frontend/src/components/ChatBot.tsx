@@ -1,19 +1,59 @@
 
 import * as React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { sendChatMessage } from '../services/api';
 import { ChatMessage } from '../types';
 
+type ChatMessageWithId = ChatMessage & { id: string };
+
+const createMessageId = () => {
+  if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
+    return (crypto as any).randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const ChatMessageRow = React.memo(function ChatMessageRow({ msg }: { msg: ChatMessageWithId }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+    >
+      <div className={`max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm leading-relaxed shadow-sm ${
+        msg.role === 'user'
+          ? 'bg-slate-900 text-white rounded-tr-none shadow-slate-200'
+          : 'bg-white/80 border border-slate-100 text-slate-700 rounded-tl-none prose prose-slate prose-sm max-w-none prose-p:my-1 prose-headings:mb-2 prose-ul:my-1 prose-li:my-0'
+      }`}>
+        {msg.role === 'assistant' ? (
+          <div className="markdown-content">
+            <ReactMarkdown>
+              {msg.content}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          msg.content
+        )}
+      </div>
+    </motion.div>
+  );
+});
+
 const ChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: 'Hello! I am your AI HR Assistant. How can I help you with workforce insights today?' }
+  const [messages, setMessages] = useState<ChatMessageWithId[]>([
+    { id: createMessageId(), role: 'assistant', content: 'Hello! I am your AI HR Assistant. How can I help you with workforce insights today?' }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<ChatMessageWithId[]>(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -21,37 +61,51 @@ const ChatBot: React.FC = () => {
     }
   }, [messages, isOpen]);
 
-  const handleSend = async () => {
+  const handleClose = useCallback(() => setIsOpen(false), []);
+  const handleToggle = useCallback(() => setIsOpen(v => !v), []);
+
+  const handleSend = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
     const userMsg = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    const userMessage: ChatMessageWithId = { id: createMessageId(), role: 'user', content: userMsg };
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
-      const history = messages.slice(1);
+      const history = messagesRef.current.slice(1).map(({ role, content }) => ({ role, content }));
       const result = await sendChatMessage(userMsg, history);
-      setMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
+      const assistantMessage: ChatMessageWithId = { id: createMessageId(), role: 'assistant', content: result.response };
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      setMessages(prev => [...prev, { 
+      const message = error instanceof Error ? error.message : 'Please check your connection.';
+      const assistantMessage: ChatMessageWithId = { 
+        id: createMessageId(),
         role: 'assistant', 
-        content: '**Connection Error**: I encountered an issue reaching the HRMS server. Please check your connection.' 
-      }]);
+        content: `**Connection Error**: ${message}` 
+      };
+      setMessages(prev => [...prev, assistantMessage]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [input, isLoading]);
+
+  const messageRows = useMemo(() => {
+    return messages.map((msg) => (
+      <ChatMessageRow key={msg.id} msg={msg} />
+    ));
+  }, [messages]);
 
   return (
-    <div className="fixed bottom-32 right-8 z-[40] flex flex-col items-end gap-5 font-sans">
+    <div className="fixed bottom-6 right-4 md:bottom-32 md:right-8 z-[40] flex flex-col items-end gap-5 font-sans">
       <AnimatePresence>
         {isOpen && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="w-[380px] h-[550px] rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/80 flex flex-col overflow-hidden mb-2"
+            className="w-[calc(100dvw-2rem)] sm:w-[380px] max-w-[380px] h-[min(550px,calc(100dvh-8rem))] rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/80 flex flex-col overflow-hidden mb-2"
             style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
           >
             {/* Header */}
@@ -69,7 +123,7 @@ const ChatBot: React.FC = () => {
                 </div>
               </div>
               <button 
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all"
               >
                 <span className="material-symbols-outlined text-xl">close</span>
@@ -78,30 +132,7 @@ const ChatBot: React.FC = () => {
             
             {/* Messages Area */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-gradient-to-b from-transparent to-white/30">
-              {messages.map((msg, idx) => (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  key={idx} 
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm leading-relaxed shadow-sm ${
-                    msg.role === 'user' 
-                      ? 'bg-slate-900 text-white rounded-tr-none shadow-slate-200' 
-                      : 'bg-white/80 border border-slate-100 text-slate-700 rounded-tl-none prose prose-slate prose-sm max-w-none prose-p:my-1 prose-headings:mb-2 prose-ul:my-1 prose-li:my-0'
-                  }`}>
-                    {msg.role === 'assistant' ? (
-                      <div className="markdown-content">
-                        <ReactMarkdown>
-                          {msg.content}
-                        </ReactMarkdown>
-                      </div>
-                    ) : (
-                      msg.content
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+              {messageRows}
               {isLoading && (
                 <div className="flex justify-start">
                    <div className="bg-white/60 border border-slate-100 p-3 px-5 rounded-2xl rounded-tl-none flex gap-1.5 items-center">
@@ -161,7 +192,7 @@ const ChatBot: React.FC = () => {
       <motion.button 
         whileHover={{ scale: 1.05, y: -2 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="h-14 w-14 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-xl flex items-center justify-center group relative overflow-hidden border border-slate-700/50"
       >
         {/* Subtle gradient background */}

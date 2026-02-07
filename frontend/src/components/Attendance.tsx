@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AttendanceRecord, Employee } from '../types';
 import { fetchAttendance, markAttendance, updateAttendance } from '../services/api';
 import Calendar from './ui/Calendar';
@@ -12,7 +12,16 @@ interface AttendanceProps {
 }
 
 const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const getTodayLocal = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const [date, setDate] = useState(getTodayLocal());
+  const [isAutoToday, setIsAutoToday] = useState(true);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,15 +37,53 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
   const [markSearch, setMarkSearch] = useState('');
   const [markData, setMarkData] = useState({ employeeId: '', status: 'Present' });
 
-  useEffect(() => {
-    loadAttendance();
-  }, [date]);
+  const handleDateChange = useCallback((nextDate: string) => {
+    setDate(nextDate);
+    const today = getTodayLocal();
+    setIsAutoToday(nextDate === today);
+    setCurrentPage(1);
+  }, []);
 
   useEffect(() => {
-    if (editingRecord) setEditStatus(editingRecord.status);
-  }, [editingRecord]);
+    if (!isAutoToday) return;
 
-  const loadAttendance = async () => {
+    const tick = () => {
+      const today = getTodayLocal();
+      setDate(prev => (prev === today ? prev : today));
+    };
+
+    tick();
+
+    const onFocus = () => tick();
+    const onVisibility = () => {
+      if (!document.hidden) tick();
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+    const id = window.setTimeout(() => {
+      tick();
+      const intervalId = window.setInterval(tick, 60_000);
+      (window as any).__attendanceMidnightIntervalId = intervalId;
+    }, msUntilMidnight);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.clearTimeout(id);
+      const intervalId = (window as any).__attendanceMidnightIntervalId;
+      if (intervalId) window.clearInterval(intervalId);
+      (window as any).__attendanceMidnightIntervalId = undefined;
+    };
+  }, [isAutoToday]);
+
+  const loadAttendance = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await fetchAttendance(date);
@@ -46,9 +93,17 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [date]);
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    loadAttendance();
+  }, [loadAttendance]);
+
+  useEffect(() => {
+    if (editingRecord) setEditStatus(editingRecord.status);
+  }, [editingRecord]);
+
+  const handleEditSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRecord) return;
 
@@ -56,6 +111,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
     try {
       await updateAttendance(editingRecord.id, { status: editStatus });
       onToast('Attendance updated!', 'success');
+      window.dispatchEvent(new CustomEvent('attendance:updated'));
       setEditingRecord(null);
       loadAttendance();
     } catch (error) {
@@ -63,30 +119,33 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [editStatus, editingRecord, loadAttendance, onToast]);
 
-  const handleMarkSubmit = async (e: React.FormEvent) => {
+  const handleMarkSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!markData.employeeId) return;
     
     try {
       await markAttendance(markData.employeeId, markData.status, date);
       onToast('Logged successfully!', 'success');
+      window.dispatchEvent(new CustomEvent('attendance:updated'));
       setIsMarkingOpen(false);
       loadAttendance();
       setMarkData({ employeeId: '', status: 'Present' });
     } catch (error) {
       onToast('Error marking attendance', 'error');
     }
-  };
+  }, [date, loadAttendance, markData.employeeId, markData.status, onToast]);
 
-  const stats = [
-    { label: 'Present', value: records.filter(r => r.status === 'Present').length, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: 'check_circle' },
-    { label: 'On Leave', value: records.filter(r => r.status === 'On Leave').length, color: 'text-blue-600', bg: 'bg-blue-50', icon: 'flight' },
-    { label: 'Absent', value: records.filter(r => r.status === 'Absent').length, color: 'text-rose-600', bg: 'bg-rose-50', icon: 'cancel' },
-  ];
+  const stats = useMemo(() => {
+    return [
+      { label: 'Present', value: records.filter(r => r.status === 'Present').length, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: 'check_circle' },
+      { label: 'On Leave', value: records.filter(r => r.status === 'On Leave').length, color: 'text-blue-600', bg: 'bg-blue-50', icon: 'flight' },
+      { label: 'Absent', value: records.filter(r => r.status === 'Absent').length, color: 'text-rose-600', bg: 'bg-rose-50', icon: 'cancel' },
+    ];
+  }, [records]);
 
-  const handleExport = () => {
+  const handleExport = useCallback(() => {
       const headers = "ID,Employee Name,Role,Date,Status\n";
       const rows = records.map(r => {
         const name = r.employeeName || 'Unknown';
@@ -97,21 +156,21 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
       link.href = csvContent;
       link.download = `attendance_${date}.csv`;
       link.click();
-  };
+  }, [date, records]);
 
   // Pagination Logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentRecords = records.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(records.length / itemsPerPage);
+  const indexOfLastItem = useMemo(() => currentPage * itemsPerPage, [currentPage, itemsPerPage]);
+  const indexOfFirstItem = useMemo(() => indexOfLastItem - itemsPerPage, [indexOfLastItem, itemsPerPage]);
+  const currentRecords = useMemo(() => records.slice(indexOfFirstItem, indexOfLastItem), [indexOfFirstItem, indexOfLastItem, records]);
+  const totalPages = useMemo(() => Math.ceil(records.length / itemsPerPage), [itemsPerPage, records.length]);
 
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
+  const handlePrevPage = useCallback(() => {
+    setCurrentPage(p => (p > 1 ? p - 1 : p));
+  }, []);
 
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(p => (p < totalPages ? p + 1 : p));
+  }, [totalPages]);
 
   return (
     <div className="animate-in fade-in duration-500 pb-10">
@@ -122,7 +181,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="w-56">
-             <Calendar value={date} onChange={setDate} />
+             <Calendar value={date} onChange={handleDateChange} />
           </div>
           <button 
             onClick={() => setIsMarkingOpen(true)}
@@ -283,6 +342,8 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                                 <Select 
                                     value={markData.employeeId}
                                     onChange={(val) => setMarkData({...markData, employeeId: val})}
+                                    position="down"
+                                    maxVisibleOptions={selectedOptions.length > 4 ? 3 : undefined}
                                     options={selectedOptions}
                                     searchValue={markSearch}
                                     onSearchChange={setMarkSearch}
@@ -304,6 +365,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                 <Select 
                     value={markData.status}
                     onChange={(val) => setMarkData({...markData, status: val})}
+                    position="up"
                     options={[
                         { value: 'Present', label: 'Present' },
                         { value: 'Absent', label: 'Absent' },
@@ -352,6 +414,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
             <Select
               value={editStatus}
               onChange={(val) => setEditStatus(val)}
+              position="up"
               options={[
                 { value: 'Present', label: 'Present' },
                 { value: 'Absent', label: 'Absent' },
@@ -382,4 +445,4 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
   );
 };
 
-export default Attendance;
+export default React.memo(Attendance);
