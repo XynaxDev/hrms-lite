@@ -1,4 +1,4 @@
-# HRMS Lite - Enterprise Intelligent Workforce Management
+# ```HRMS Lite | Enterprise Intelligent Workforce Management```
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61dafb)
@@ -11,9 +11,9 @@
 ![Status](https://img.shields.io/badge/Status-Live-brightgreen)
 ![AI](https://img.shields.io/badge/AI-OpenRouter-8A2BE2)
 
-HRMS Lite is a state-of-the-art, full-stack Human Resource Management System designed for modern, high-growth teams. It combines a premium React-based user interface with a FastAPI backend and intelligent data querying powered by **OpenRouter**.
+HRMS Lite is a state-of-the-art, full-stack Human Resource Management System designed for modern, high-growth teams. It combines a premium React based user interface with a FastAPI backend and intelligent data querying powered by **OpenRouter**.
 
-## ✨ Core Features
+## ```✨ Core Features```
 
 - **Intelligent HR Assistant**
   - Production-style conversational UI with chat history and responsive layout.
@@ -37,8 +37,7 @@ HRMS Lite is a state-of-the-art, full-stack Human Resource Management System des
 
 ---
 
-## 🏗️ Project Architecture
-
+## ```🏗️ Project Architecture```
 The system is split into two main modules:
 
 1.  **Frontend (`/frontend`)**: 
@@ -52,8 +51,7 @@ The system is split into two main modules:
 
 ---
 
-## 🔒 Security & Isolation (MVP)
-
+## ```🔒 Security & Isolation (MVP)```
 This project is currently running **without full authentication** by design (demo/MVP mode).
 
 - **Device / PC Isolation (Session-Scoped)**
@@ -84,15 +82,15 @@ DEMO_ISOLATION_ENABLED=true
 DEMO_ISOLATION_MODE=device  # device | ip
 ```
 
-## 🚀 Getting Started
+## ```🚀 Getting Started```
 
-### 1) Prerequisites
+### ```Prerequisites```
 
 - Python 3.12+
 - Node.js 18+
 - PostgreSQL (local or hosted)
 
-### 2) Backend (FastAPI)
+### ```Backend (FastAPI)```
 
 From the repository root:
 
@@ -148,7 +146,7 @@ The API should be available at:
 - `http://localhost:8000`
 - Swagger docs: `http://localhost:8000/docs`
 
-### 3) Frontend (React + Vite)
+### ```Frontend (React + Vite)```
 
 From the repository root:
 
@@ -174,7 +172,7 @@ Open:
 
 - `http://localhost:5173`
 
-### 4) Production build checks
+### ```Production build checks```
 
 Frontend typecheck + build:
 
@@ -189,11 +187,9 @@ Backend syntax check (optional):
 python -m compileall backend\app
 ```
 
----
+## ```🌐 Deployment```
 
-## 🌐 Deployment
-
-### Backend (Railway)
+### ```Backend (Railway)```
 1. Push the repository to GitHub.
 2. Create a new project in Railway and connect your repo.
 3. Configure the service:
@@ -201,7 +197,7 @@ python -m compileall backend\app
    - **Start Command**:
 
 ```
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
 4. Set environment variables in Railway:
@@ -212,7 +208,7 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app
    - `API_KEY` (must match frontend `VITE_API_KEY`)
 5. Deploy and copy your public Railway service URL.
 
-### Frontend (Vercel)
+### ```Frontend (Vercel)```
 1. Create a new project on Vercel.
 2. Import your GitHub repo.
 3. Set:
@@ -227,11 +223,60 @@ Required frontend env vars:
 - `VITE_API_URL`
 - `VITE_API_KEY`
 
----
+## ```Requirements```
 
-## 🛡️ License
+### ```✅ Checklist```
+- [ ] **Live Application URL** - Deployed frontend on Vercel
+- [ ] **GitHub Repository Link** - Public repository with all source code
+- [ ] **README.md** containing:
+  - [x] Project overview
+  - [x] Tech stack used  
+  - [x] Steps to run the project locally
+  - [x] Assumptions or limitations
+
+
+## ```Limitations & Assumptions```
+
+### ```Current Limitations (Demo Mode)```
+1. **No Authentication System**
+   - Uses demo device isolation instead of proper user authentication
+   - Data is scoped per device/browser session via `X-Device-Id` header
+   - Not suitable for production multi-user environments
+
+2. **Single-Tenant Architecture**
+   - Designed for single organization/demo use
+   - No multi-tenant or company-based data separation
+   - All users share the same database schema
+
+3. **Basic Role Management**
+   - No role-based access control (RBAC)
+   - All users have full access to all features
+   - No admin/user permission differentiation
+
+4. **Limited Audit Trail**
+   - Basic activity logging only
+   - No comprehensive audit logs for compliance
+   - Limited change tracking capabilities
+
+### ```Assumptions```
+- Demo environment with trusted users
+- Small to medium team size (< 500 employees)
+- Single geographic region (no timezone complexity)
+- Basic HR workflows without complex compliance requirements
+
+### ```Roadmap for Production```
+- Implement proper authentication (JWT/OAuth)
+- Add role-based access control
+- Multi-tenant architecture with company isolation
+- Comprehensive audit logging
+- Advanced compliance features (GDPR, etc.)
+
+
+## ```License```
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
 **Built with ❤️ by Akash for Modern Operations.**
+> If you find this project useful, please consider giving it a star ⭐ on GitHub.
+
