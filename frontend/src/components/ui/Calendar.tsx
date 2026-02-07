@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface CalendarProps {
   value: string; // YYYY-MM-DD
@@ -11,6 +12,7 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dropDirection, setDropDirection] = useState<'up' | 'down'>('down');
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   
   // Parse initial date
   const parseLocalYMD = (ymd: string) => {
@@ -68,6 +70,26 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
     }
   }, [isOpen, position]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setAnchorRect(null);
+      return;
+    }
+
+    const update = () => {
+      if (!containerRef.current) return;
+      setAnchorRect(containerRef.current.getBoundingClientRect());
+    };
+
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen]);
+
   const renderCalendarDays = () => {
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
@@ -110,7 +132,7 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className={isOpen ? 'relative z-[9999]' : 'relative'} ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -120,59 +142,65 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
         <span>{value || 'Select Date'}</span>
       </button>
 
-      {isOpen && (
-        <div 
-          className={`absolute z-[100] w-72 rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-4 ${
-            dropDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
-          }`}
-          style={{ left: 0 }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 rounded-full text-slate-500">
-              <span className="material-symbols-outlined text-lg">chevron_left</span>
-            </button>
-            <span className="font-semibold text-slate-900 text-sm">
-              {monthNames[viewDate.getMonth()]} {viewDate.getFullYear()}
-            </span>
-            <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 rounded-full text-slate-500">
-              <span className="material-symbols-outlined text-lg">chevron_right</span>
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-7 gap-1 mb-2 text-center">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
-              <span key={idx} className="text-xs font-bold text-slate-400">{d}</span>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-7 gap-1 place-items-center">
-            {renderCalendarDays()}
-          </div>
-          
-          <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between">
-             <button 
+      {isOpen && anchorRect && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed z-[10000] w-72 rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-4"
+            style={{
+              left: Math.max(8, Math.min(anchorRect.left, window.innerWidth - 8 - 288)),
+              top:
+                dropDirection === 'up'
+                  ? Math.max(8, anchorRect.top - 8 - 340)
+                  : Math.min(window.innerHeight - 8 - 340, anchorRect.bottom + 8),
+            }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 rounded-full text-slate-500">
+                <span className="material-symbols-outlined text-lg">chevron_left</span>
+              </button>
+              <span className="font-semibold text-slate-900 text-sm">
+                {monthNames[viewDate.getMonth()]} {viewDate.getFullYear()}
+              </span>
+              <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 rounded-full text-slate-500">
+                <span className="material-symbols-outlined text-lg">chevron_right</span>
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1 mb-2 text-center">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
+                <span key={idx} className="text-xs font-bold text-slate-400">{d}</span>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1 place-items-center">
+              {renderCalendarDays()}
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between">
+              <button
                 onClick={() => {
-                   onChange('');
-                   setIsOpen(false);
+                  onChange('');
+                  setIsOpen(false);
                 }}
                 className="text-xs text-slate-500 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-             >
+              >
                 Clear
-             </button>
-             <button 
+              </button>
+              <button
                 onClick={() => {
-                   const today = new Date();
-                   const str = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                   onChange(str);
-                   setIsOpen(false);
+                  const today = new Date();
+                  const str = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                  onChange(str);
+                  setIsOpen(false);
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-             >
+              >
                 Today
-             </button>
-          </div>
-        </div>
-      )}
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

@@ -53,7 +53,7 @@ const EmployeeCard = React.memo(function EmployeeCard({
           <div className="relative group/action">
             <button 
               onClick={() => onView(emp)} 
-              className="text-slate-500 hover:text-blue-600 transition-colors p-1.5 rounded-lg hover:bg-blue-50 bg-white shadow-sm"
+              className="h-8 w-8 inline-flex items-center justify-center text-slate-500 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50 bg-white shadow-sm"
               aria-label="View Profile"
             >
               <span className="material-symbols-outlined text-sm">visibility</span>
@@ -66,7 +66,7 @@ const EmployeeCard = React.memo(function EmployeeCard({
           <div className="relative group/action">
             <button 
               onClick={() => onAskDelete(emp.id)}
-              className="text-slate-500 hover:text-rose-600 transition-colors p-1.5 rounded-lg hover:bg-rose-50 bg-white shadow-sm"
+              className="h-8 w-8 inline-flex items-center justify-center text-slate-500 hover:text-rose-600 transition-colors rounded-full hover:bg-rose-50 bg-white shadow-sm"
               aria-label="Delete Employee"
             >
               <span className="material-symbols-outlined text-sm">delete</span>
@@ -463,7 +463,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         )}
       </div>
 
-      <div className="pt-8 mt-auto flex items-center justify-between border-t border-slate-100 bg-white rounded-b-2xl">
+      <div className="pt-8 pb-4 px-4 mt-auto flex items-center justify-between border-t border-slate-100 bg-white rounded-b-2xl">
         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             Showing <span className="text-slate-900">{filteredEmployees.length > 0 ? indexOfFirstItem + 1 : 0}</span> - <span className="text-slate-900">{Math.min(indexOfLastItem, filteredEmployees.length)}</span> of <span className="text-slate-900">{filteredEmployees.length}</span>
         </span>
