@@ -38,7 +38,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Protect against Host Header Injection
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.render.com", "*.vercel.app"],
+    allowed_hosts=["localhost", "127.0.0.1", "*.render.com", "*.vercel.app""*.railway.app",],
 )
 
 # Configure CORS
