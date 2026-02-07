@@ -150,7 +150,7 @@ const ChatBot: React.FC = () => {
                 </button>
               </form>
               <div className="mt-2 text-center">
-                 <p className="text-[9px] text-slate-400 font-medium tracking-tight">Standard logic: [Enter] to send | [Shift+Enter] for new line</p>
+                 <p className="text-[9px] text-slate-400 font-medium tracking-tight">[Enter] to send | [Shift+Enter] for new line</p>
               </div>
             </div>
           </motion.div>

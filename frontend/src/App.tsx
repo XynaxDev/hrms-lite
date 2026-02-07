@@ -164,8 +164,8 @@ const App: React.FC = () => {
         </div>
 
         {/* Scrollable main content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-          <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col">
+          <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10 flex-1">
             {renderContent()}
           </div>
           

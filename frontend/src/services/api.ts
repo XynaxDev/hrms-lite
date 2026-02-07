@@ -166,6 +166,25 @@ export async function markAttendance(id: string, status: string, date?: string) 
   if (!response.ok) throw new Error('Failed to mark attendance');
   return response.json();
 }
+
+export async function updateAttendance(attendanceId: string, data: { status?: string; checkIn?: string; checkOut?: string; workHours?: string }) {
+  const response = await fetch(`${API_BASE_URL}/attendance/${encodeURIComponent(attendanceId)}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      status: data.status,
+      check_in: data.checkIn,
+      check_out: data.checkOut,
+      work_hours: data.workHours,
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Failed to update attendance');
+  }
+  return response.json();
+}
+
 export async function updateEmployee(id: string, data: any) {
   const dbData = mapEmployeeToDB(data);
   const response = await fetch(`${API_BASE_URL}/employees/${id}`, {

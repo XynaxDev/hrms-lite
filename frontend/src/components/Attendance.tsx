@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { AttendanceRecord, Employee } from '../types';
-import { fetchAttendance, markAttendance } from '../services/api';
+import { fetchAttendance, markAttendance, updateAttendance } from '../services/api';
 import Calendar from './ui/Calendar';
 import Dialog from './ui/Dialog';
 import Select from './ui/Select';
@@ -20,6 +20,8 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
   
   // Edit State
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [editStatus, setEditStatus] = useState('Present');
+  const [isUpdating, setIsUpdating] = useState(false);
   
   // Mark Attendance State
   const [isMarkingOpen, setIsMarkingOpen] = useState(false);
@@ -30,6 +32,10 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
     loadAttendance();
   }, [date]);
 
+  useEffect(() => {
+    if (editingRecord) setEditStatus(editingRecord.status);
+  }, [editingRecord]);
+
   const loadAttendance = async () => {
     setIsLoading(true);
     try {
@@ -39,6 +45,23 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
       console.error('Error loading attendance:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+
+    setIsUpdating(true);
+    try {
+      await updateAttendance(editingRecord.id, { status: editStatus });
+      onToast('Attendance updated!', 'success');
+      setEditingRecord(null);
+      loadAttendance();
+    } catch (error) {
+      onToast('Error updating attendance', 'error');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -310,16 +333,46 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
         title="Update Entry"
         description={`Modifying record for ${editingRecord?.employeeName}`}
       >
-        {/* Simplified edit for now */}
-        <div className="py-6 text-center">
-            <p className="text-sm text-slate-500 font-medium">Detailed record modification is coming soon to the administrative console.</p>
-            <button 
-                onClick={() => setEditingRecord(null)}
-                className="mt-6 h-10 px-8 rounded-xl bg-slate-100 text-slate-900 text-sm font-bold hover:bg-slate-200 transition-all"
+        <form onSubmit={handleEditSubmit} className="space-y-6 py-4">
+          <div className="space-y-1">
+            <div className="text-xs font-black text-slate-400 uppercase tracking-widest">Record</div>
+            <div className="text-sm font-bold text-slate-900">
+              {editingRecord?.employeeName}
+              {editingRecord?.employeeId ? <span className="text-slate-400 font-semibold"> · {editingRecord.employeeId}</span> : null}
+            </div>
+            <div className="text-xs text-slate-500 font-medium">Date: {editingRecord?.date}</div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Status</label>
+            <Select
+              value={editStatus}
+              onChange={(val) => setEditStatus(val)}
+              options={[
+                { value: 'Present', label: 'Present' },
+                { value: 'Absent', label: 'Absent' },
+                { value: 'On Leave', label: 'On Leave' },
+              ]}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setEditingRecord(null)}
+              className="h-10 px-6 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
             >
-                Understood
+              Cancel
             </button>
-        </div>
+            <button
+              type="submit"
+              disabled={isUpdating || !editingRecord}
+              className="h-10 px-8 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-slate-900/10"
+            >
+              {isUpdating ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
       </Dialog>
     </div>
   );

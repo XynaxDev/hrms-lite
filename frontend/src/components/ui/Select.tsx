@@ -21,6 +21,7 @@ const Select: React.FC<SelectProps> = ({
   onSearchChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -44,11 +45,30 @@ const Select: React.FC<SelectProps> = ({
   const selectedLabel = options.find(opt => opt.value === value)?.label || placeholder;
   const searchTerm = isSearchable ? (onSearchChange ? searchValue : localSearch) : '';
 
+  const computeDropdownDirection = () => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+
+    const approxDropdownH = isSearchable ? 320 : 260;
+    const spaceBelow = viewportH - rect.bottom;
+    const spaceAbove = rect.top;
+
+    setOpenUp(spaceBelow < approxDropdownH && spaceAbove > spaceBelow);
+  };
+
+  const handleToggle = () => {
+    if (!isOpen) computeDropdownDirection();
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-w-[180px]"
       >
         <span className="block truncate text-slate-700">{selectedLabel}</span>
@@ -56,7 +76,7 @@ const Select: React.FC<SelectProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-[100] mt-1 max-h-60 w-full min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white text-slate-950 shadow-md animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+        <div className={`absolute z-[100] max-h-60 w-full min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white text-slate-950 shadow-md animate-in fade-in zoom-in-95 duration-200 flex flex-col ${openUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           {isSearchable && (
             <div className="border-b border-slate-200 p-2">
               <div className="relative">
