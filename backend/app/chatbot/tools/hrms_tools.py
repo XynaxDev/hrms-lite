@@ -14,6 +14,7 @@ from app.services.attendance_service import AttendanceService
 from app.services.activity_service import ActivityService
 from app.core.demo_scope_context import get_demo_scope_key
 from datetime import datetime, timedelta
+from app.models.attendance import Attendance
 
 
 def get_db_session() -> Session:
@@ -54,6 +55,26 @@ def _normalize_date(date_str: str | None) -> str:
         return s
 
 
+def _latest_attendance_date(db: Session, scope_key: str | None) -> str:
+    query = db.query(Attendance.date)
+    if scope_key:
+        query = query.filter(Attendance.device_id == scope_key)
+    latest = query.order_by(Attendance.date.desc()).first()
+    return (latest[0] if latest and latest[0] else datetime.now().strftime("%Y-%m-%d"))
+
+
+def _resolve_attendance_date(date_str: str | None, db: Session, scope_key: str | None) -> str:
+    if date_str is None:
+        return _latest_attendance_date(db, scope_key)
+    s = date_str.strip() if isinstance(date_str, str) else str(date_str)
+    if not s:
+        return _latest_attendance_date(db, scope_key)
+    low = s.lower()
+    if low in {"today", "now"}:
+        return _latest_attendance_date(db, scope_key)
+    return _normalize_date(s)
+
+
 @tool
 def get_organization_stats() -> str:
     """Get a quick high-level overview of organization metrics (Dashboard stats).
@@ -64,9 +85,10 @@ def get_organization_stats() -> str:
     try:
         scope_key = _scope_key()
         total = EmployeeService.get_employee_count(db, scope_key=scope_key)
-        att_stats = AttendanceService.get_attendance_stats_scoped(db, scope_key=scope_key)
-
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = _latest_attendance_date(db, scope_key)
+        att_stats = AttendanceService.get_attendance_stats_scoped(
+            db, date_str=today, scope_key=scope_key
+        )
         absent_records, _ = AttendanceService.get_all_attendance(
             db,
             date_filter=today,
@@ -88,10 +110,10 @@ def get_organization_stats() -> str:
 @tool
 def get_absent_employees(date: str = None) -> str:
     """Get employees marked Absent on a specific date (YYYY-MM-DD)."""
-    date_norm = _normalize_date(date)
     db = get_db_session()
     try:
         scope_key = _scope_key()
+        date_norm = _resolve_attendance_date(date, db, scope_key)
         records, _ = AttendanceService.get_all_attendance(
             db,
             date_filter=date_norm,
@@ -117,10 +139,10 @@ def get_absent_employees(date: str = None) -> str:
 @tool
 def get_attendance_summary(date: str = None) -> str:
     """Get attendance summary for a specific date (YYYY-MM-DD)."""
-    date_norm = _normalize_date(date)
     db = get_db_session()
     try:
         scope_key = _scope_key()
+        date_norm = _resolve_attendance_date(date, db, scope_key)
         stats = AttendanceService.get_attendance_stats_scoped(
             db, date_str=date_norm, scope_key=scope_key
         )
@@ -141,10 +163,10 @@ def get_attendance_summary(date: str = None) -> str:
 @tool
 def get_present_employees(date: str = None) -> str:
     """List employees marked Present on a specific date (YYYY-MM-DD)."""
-    date_norm = _normalize_date(date)
     db = get_db_session()
     try:
         scope_key = _scope_key()
+        date_norm = _resolve_attendance_date(date, db, scope_key)
         records, _ = AttendanceService.get_all_attendance(
             db,
             date_filter=date_norm,
@@ -280,10 +302,10 @@ def get_employees_on_leave_by_date(date: str = None) -> str:
 
     Use this when the user asks who was on leave on a past date.
     """
-    date_norm = _normalize_date(date)
     db = get_db_session()
     try:
         scope_key = _scope_key()
+        date_norm = _resolve_attendance_date(date, db, scope_key)
         records, _ = AttendanceService.get_all_attendance(
             db,
             date_filter=date_norm,
@@ -408,13 +430,10 @@ def get_employees_on_leave() -> str:
 
     Use this when the user asks about who is on leave or vacation today.
     """
-    from datetime import datetime
-
-    today = datetime.now().strftime("%Y-%m-%d")
-
     db = get_db_session()
     try:
         scope_key = _scope_key()
+        today = _latest_attendance_date(db, scope_key)
         records, _ = AttendanceService.get_all_attendance(
             db,
             date_filter=today,
@@ -443,11 +462,11 @@ def get_absent_employees_today() -> str:
     """
     db = get_db_session()
     try:
-        from datetime import datetime
-        today = datetime.now().strftime("%Y-%m-%d")
-
         scope_key = _scope_key()
-        absent_employees = AttendanceService.get_absent_employees_scoped(db, today, scope_key=scope_key)
+        today = _latest_attendance_date(db, scope_key)
+        absent_employees = AttendanceService.get_absent_employees_scoped(
+            db, today, scope_key=scope_key
+        )
         
         if not absent_employees:
             return "No employees are currently absent. All active employees either have attendance marked or are on leave."

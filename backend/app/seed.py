@@ -115,7 +115,13 @@ def seed_global_demo_data(
     def _scoped_email(base_email: str, base_id: str) -> str:
         if not scope_key:
             return base_email
-        return f"dum.{_scoped_emp_id(base_id).lower()}@example.com"
+        n = base_id.split("_", 1)[-1]
+        try:
+            n_int = int(n)
+        except Exception:
+            n_int = 0
+        nn = str(n_int).zfill(2) if n_int > 0 else n
+        return f"dum_{nn}_{scope_suffix.lower()}@example.com"
 
     try:
         # Check if we need to seed employees
@@ -148,6 +154,21 @@ def seed_global_demo_data(
                     )
                 )
             db.commit()
+
+        # Keep emails in sync with the scoped email format for already-seeded demo employees.
+        if scope_key:
+            changed = False
+            for data in base_employees[: max(0, employee_count)]:
+                emp_id = _scoped_emp_id(data["id"])
+                emp = db.query(Employee).filter(Employee.id == emp_id).first()
+                if not emp:
+                    continue
+                desired = _scoped_email(data["email"], data["id"])
+                if desired and emp.email != desired:
+                    emp.email = desired
+                    changed = True
+            if changed:
+                db.commit()
 
         # Intentionally do not seed attendance/activities.
         # Attendance should stay empty until a user marks it.
