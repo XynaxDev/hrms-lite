@@ -117,6 +117,17 @@ async def health_check():
 @app.on_event("startup")
 def startup_event():
     Base.metadata.create_all(bind=engine)
+
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TYPE statusenum ADD VALUE IF NOT EXISTS 'Inactive'"))
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("UPDATE employees SET status='ACTIVE' WHERE status IN ('ON_LEAVE','On Leave')"))
+        except Exception:
+            pass
     if settings.DEMO_ISOLATION_ENABLED:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE IF EXISTS employees ADD COLUMN IF NOT EXISTS device_id TEXT"))

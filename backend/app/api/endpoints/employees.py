@@ -13,6 +13,7 @@ from app.schemas.employee import (
     EmployeeResponse,
     EmployeeListResponse,
 )
+from app.models.employee import StatusEnum
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 
@@ -37,6 +38,17 @@ def get_employees(
         search=search,
         scope_key=scope_key,
     )
+
+    for emp in employees:
+        try:
+            if (
+                emp.status == StatusEnum.ON_LEAVE
+                or getattr(emp.status, "value", None) == "On Leave"
+                or emp.status == "On Leave"
+            ):
+                emp.status = StatusEnum.ACTIVE
+        except Exception:
+            pass
 
     return EmployeeListResponse(
         employees=employees,
@@ -66,15 +78,17 @@ def get_employee_stats(
                 .all()
             )
         }
-        by_status = {
-            str(status.value if hasattr(status, "value") else status): count
-            for status, count in (
-                db.query(Employee.status, func.count(Employee.id).label("count"))
-                .filter(Employee.device_id == scope_key)
-                .group_by(Employee.status)
-                .all()
-            )
-        }
+        by_status: dict[str, int] = {}
+        for s, count in (
+            db.query(Employee.status, func.count(Employee.id).label("count"))
+            .filter(Employee.device_id == scope_key)
+            .group_by(Employee.status)
+            .all()
+        ):
+            key = str(s.value if hasattr(s, "value") else s)
+            if key == "On Leave":
+                key = "Active"
+            by_status[key] = by_status.get(key, 0) + int(count)
         return {"total": total, "by_department": by_department, "by_status": by_status}
 
     return {
@@ -98,6 +112,15 @@ def get_employee(
         )
     if scope_key and employee.device_id != scope_key:
         raise HTTPException(status_code=404, detail=f"Employee with ID {employee_id} not found")
+    try:
+        if (
+            employee.status == StatusEnum.ON_LEAVE
+            or getattr(employee.status, "value", None) == "On Leave"
+            or employee.status == "On Leave"
+        ):
+            employee.status = StatusEnum.ACTIVE
+    except Exception:
+        pass
     return employee
 
 

@@ -35,7 +35,20 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         """Parse ALLOWED_ORIGINS into a list."""
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+        origins = [o for o in origins if o]
+
+        localhost_defaults = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
+        for o in localhost_defaults:
+            if o not in origins:
+                origins.append(o)
+
+        return origins
 
     class Config:
         env_file = ".env"

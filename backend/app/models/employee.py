@@ -22,6 +22,7 @@ class StatusEnum(str, enum.Enum):
     """Employee status enumeration."""
 
     ACTIVE = "Active"
+    INACTIVE = "Inactive"
     ON_LEAVE = "On Leave"
     TERMINATED = "Terminated"
 

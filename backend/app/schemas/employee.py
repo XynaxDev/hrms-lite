@@ -29,7 +29,7 @@ class StatusType(str, Enum):
     """Employee status types."""
 
     ACTIVE = "Active"
-    ON_LEAVE = "On Leave"
+    INACTIVE = "Inactive"
     TERMINATED = "Terminated"
 
 

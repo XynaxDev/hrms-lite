@@ -46,13 +46,12 @@ def get_organization_stats() -> str:
     try:
         scope_key = _scope_key()
         total = EmployeeService.get_employee_count(db, scope_key=scope_key)
-        on_leave = len(EmployeeService.get_employees_by_status_scoped(db, "On Leave", scope_key=scope_key))
         att_stats = AttendanceService.get_attendance_stats_scoped(db, scope_key=scope_key)
 
         return f"""Current Organization Stats:
 - Total Employees: {total}
 - Attendance Rate: {att_stats["attendance_rate"]}%
-- Employees on Leave: {on_leave}
+- Employees on Leave (today): {att_stats["on_leave"]}
 - Today's Status: {att_stats["present"]} Present, {att_stats["absent"]} Absent"""
     finally:
         db.close()
@@ -137,26 +136,33 @@ def get_employees_by_department(department: str) -> str:
 
 @tool
 def get_employees_on_leave() -> str:
-    """Get all employees who are currently on leave.
+    """Get today's employees on leave based on attendance records.
 
-    Use this when the user asks about who is on leave or vacation.
+    Use this when the user asks about who is on leave or vacation today.
     """
+    from datetime import datetime
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
     db = get_db_session()
     try:
         scope_key = _scope_key()
-        employees = EmployeeService.get_employees_by_status_scoped(db, "On Leave", scope_key=scope_key)
-        if not employees:
-            return "No employees are currently on leave."
+        records, _ = AttendanceService.get_all_attendance(
+            db,
+            date_filter=today,
+            status="On Leave",
+            limit=500,
+            scope_key=scope_key,
+        )
 
-        employee_list = "\n".join(
-            [
-                f"- {emp.full_name} ({emp.department.value}, {emp.role})"
-                for emp in employees
-            ]
+        if not records:
+            return "No employees are currently on leave today."
+
+        lines = "\n".join(
+            [f"- {r.employee_name} ({r.role})" for r in records[:25]]
         )
-        return (
-            f"Employees currently on leave ({len(employees)} total):\n{employee_list}"
-        )
+        more = "" if len(records) <= 25 else f"\n... and {len(records) - 25} more"
+        return f"Employees on leave today ({len(records)} total):\n{lines}{more}"
     finally:
         db.close()
 

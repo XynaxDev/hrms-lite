@@ -16,6 +16,9 @@ async def get_api_key(
     In a real app, this would check against a database of valid keys.
     For HRMS Lite, we use the SECRET_KEY as a master key for high-level protection.
     """
+    if settings.DEBUG:
+        return None
+
     if not settings.SECRET_KEY:
         # If no secret key is set, we allow access but this is a warning state
         return None
