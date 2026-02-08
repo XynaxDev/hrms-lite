@@ -120,13 +120,32 @@ def startup_event():
     Base.metadata.create_all(bind=engine)
 
     with engine.begin() as conn:
-        try:
-            conn.execute(text("ALTER TYPE statusenum ADD VALUE IF NOT EXISTS 'Inactive'"))
-        except Exception:
-            pass
+        # Keep enum labels backward-compatible across deployments.
+        # Some older DBs store uppercase labels (ACTIVE) while newer code paths may
+        # attempt to write enum member names (INACTIVE). We normalize to uppercase.
+        for label in ("ACTIVE", "INACTIVE", "TERMINATED", "ON_LEAVE"):
+            try:
+                conn.execute(text(f"ALTER TYPE statusenum ADD VALUE IF NOT EXISTS '{label}'"))
+            except Exception:
+                pass
 
+        # Normalize any legacy/title-case values to uppercase labels.
+        # Use ::text casting so it works regardless of enum label set.
         try:
-            conn.execute(text("UPDATE employees SET status='ACTIVE' WHERE status IN ('ON_LEAVE','On Leave')"))
+            conn.execute(
+                text(
+                    """
+                    UPDATE employees
+                    SET status = CASE
+                        WHEN status::text IN ('Active', 'ACTIVE') THEN 'ACTIVE'
+                        WHEN status::text IN ('Inactive', 'INACTIVE') THEN 'INACTIVE'
+                        WHEN status::text IN ('Terminated', 'TERMINATED') THEN 'TERMINATED'
+                        WHEN status::text IN ('On Leave', 'ON_LEAVE', 'ON LEAVE', 'ON-LEAVE') THEN 'ON_LEAVE'
+                        ELSE status
+                    END
+                    """
+                )
+            )
         except Exception:
             pass
 
