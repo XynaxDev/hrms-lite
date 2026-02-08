@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = ""
     DEBUG: bool = False
     ALLOWED_ORIGINS: str = ""
+    ALLOWED_ORIGIN_REGEX: str = ""
 
     # Demo isolation (no-auth demo mode)
     DEMO_ISOLATION_ENABLED: bool = False
@@ -35,7 +36,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         """Parse ALLOWED_ORIGINS into a list."""
-        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+        def _clean(o: str) -> str:
+            o = (o or "").strip()
+            if (o.startswith("\"") and o.endswith("\"")) or (o.startswith("'") and o.endswith("'")):
+                o = o[1:-1].strip()
+            o = o.rstrip("/")
+            return o
+
+        origins = [_clean(origin) for origin in self.ALLOWED_ORIGINS.split(",")]
         origins = [o for o in origins if o]
 
         localhost_defaults = [
