@@ -15,3 +15,46 @@ The premium React-based interface for HRMS Lite.
 
 ## 📦 Deployment
 Ready for **Vercel** or **Netlify**.
+
+## 🚀 Detailed Frontend Setup (from root README)
+
+### Prerequisites
+
+- **Node.js** 18 or higher
+
+### Install Dependencies
+
+```bash
+npm install
+```
+
+### Configure Environment Variables
+
+Create a `.env` file in the `frontend` directory:
+
+```env
+VITE_API_URL=http://localhost:8000/api/v1
+VITE_API_KEY=CHANGE_ME_MATCHES_BACKEND
+```
+
+### Run
+
+```bash
+npm run dev
+```
+
+✅ Frontend is now running at: `http://localhost:5173`
+
+## 🌐 Production Deployment Notes (from root README)
+
+### Vercel (example)
+
+- **Framework Preset:** Vite
+- **Root Directory:** `frontend`
+
+Environment variables example:
+
+```env
+VITE_API_URL=https://<your-railway-backend>/api/v1
+VITE_API_KEY=<must-match-backend-key>
+```

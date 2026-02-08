@@ -23,6 +23,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
   }, []);
 
   const reduceMotion = prefersReducedMotion || isMobile;
+  const allowLogoScrollMotion = !prefersReducedMotion;
 
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, reduceMotion ? 0 : 200]);
@@ -358,8 +359,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                   <div className="absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-slate-50/50 to-transparent z-10 pointer-events-none"></div>
                   
                   <motion.div 
-                    animate={reduceMotion ? undefined : { x: ["0%", "-50%"] }}
-                    transition={reduceMotion ? undefined : { duration: isMobile ? 80 : 50, repeat: Infinity, ease: "linear" }}
+                    animate={allowLogoScrollMotion ? { x: ["0%", "-50%"] } : undefined}
+                    transition={allowLogoScrollMotion ? { duration: isMobile ? 80 : 50, repeat: Infinity, ease: "linear" } : undefined}
                     className="flex gap-28 whitespace-nowrap items-center"
                   >
                     {[...Array(2)].map((_, i) => (

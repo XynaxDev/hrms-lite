@@ -44,14 +44,14 @@ const ChatBot: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-4 md:bottom-6 md:right-8 z-[40] flex flex-col items-end gap-5 font-sans">
+    <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-8 md:bottom-6 z-[40] flex flex-col items-end gap-5 font-sans">
       <AnimatePresence>
         {isOpen && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="w-[380px] h-[min(550px,calc(100dvh-8rem))] md:h-[min(550px,calc(100dvh-6rem))] rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/80 flex flex-col overflow-hidden mb-2"
+            className="w-full max-w-[380px] h-[min(550px,calc(100dvh-8rem))] md:h-[min(550px,calc(100dvh-6rem))] rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white/80 flex flex-col overflow-hidden mb-2"
             style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
           >
             {/* Header */}

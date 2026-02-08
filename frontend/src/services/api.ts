@@ -1,5 +1,17 @@
 /// <reference types="vite/client" />
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const resolveApiBaseUrl = () => {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+  if (envUrl) return envUrl.replace(/\/+$/, '');
+
+  if (typeof window === 'undefined') return 'http://localhost:8000/api/v1';
+
+  const hostname = window.location.hostname || 'localhost';
+  const protocol = window.location.protocol || 'http:';
+  const apiHost = hostname;
+  return `${protocol}//${apiHost}:8000/api/v1`;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
 const DEVICE_ID_STORAGE_KEY = 'hrms_demo_device_id';
