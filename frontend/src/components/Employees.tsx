@@ -127,6 +127,20 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
   const [selectedDept, setSelectedDept] = useState('All');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+
+  const getNextEmployeeId = useCallback(() => {
+    let max = 0;
+    for (const e of employees || []) {
+      const raw = (e?.id || '').toString().trim();
+      const m = raw.match(/^EMP[_-]?(\d+)$/i);
+      if (!m) continue;
+      const n = parseInt(m[1], 10);
+      if (!Number.isFinite(n)) continue;
+      if (n > max) max = n;
+    }
+    const next = max + 1;
+    return `EMP_${String(next).padStart(2, '0')}`;
+  }, [employees]);
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -302,7 +316,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
     e.preventDefault();
     
     const employeeToAdd: any = {
-      id: newEmployee.id || `#EMP-${Math.floor(Math.random() * 10000)}`,
+      id: (newEmployee.id || '').trim() || getNextEmployeeId(),
       fullName: newEmployee.fullName,
       email: newEmployee.email,
       role: newEmployee.role,
@@ -327,7 +341,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         joinedDate: new Date().toISOString().split('T')[0],
         id: ''
     });
-  }, [newEmployee, onAddEmployee]);
+  }, [getNextEmployeeId, newEmployee, onAddEmployee]);
 
   const confirmDelete = useCallback(() => {
     if (employeeToDelete) {
