@@ -39,7 +39,7 @@ class Employee(Base):
     department = Column(
         SQLEnum(
             DepartmentEnum,
-            values_callable=lambda x: [e.value for e in x],
+            values_callable=lambda x: [e.name for e in x],
             name="departmentenum",
         ),
         nullable=False,
