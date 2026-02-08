@@ -129,16 +129,27 @@ def startup_event():
             conn.execute(text("UPDATE employees SET status='ACTIVE' WHERE status IN ('ON_LEAVE','On Leave')"))
         except Exception:
             pass
-    if settings.DEMO_ISOLATION_ENABLED:
-        with engine.begin() as conn:
+
+    # Ensure optional demo-isolation columns exist even when demo isolation is disabled.
+    # This prevents runtime 500s when running against an older database schema.
+    with engine.begin() as conn:
+        try:
             conn.execute(text("ALTER TABLE IF EXISTS employees ADD COLUMN IF NOT EXISTS device_id TEXT"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_employees_device_id ON employees(device_id)"))
+        except Exception:
+            pass
 
+        try:
             conn.execute(text("ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS device_id TEXT"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_attendance_device_id ON attendance(device_id)"))
+        except Exception:
+            pass
 
+        try:
             conn.execute(text("ALTER TABLE IF EXISTS activities ADD COLUMN IF NOT EXISTS device_id TEXT"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_activities_device_id ON activities(device_id)"))
+        except Exception:
+            pass
     print("Database tables created/verified.")
 
 
