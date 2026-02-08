@@ -35,6 +35,25 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
   const [statusDrawerSearch, setStatusDrawerSearch] = useState('');
   const [isMobileDrawer, setIsMobileDrawer] = useState(false);
 
+  const getFriendlyDemoId = React.useCallback((id: string) => {
+    const raw = (id || '').toString().trim();
+    if (!raw.toUpperCase().startsWith('DUM_')) return raw;
+    const parts = raw.split('_');
+    const last = parts[parts.length - 1];
+    const n = parseInt(last, 10);
+    if (!Number.isFinite(n)) return raw;
+    return `DUM_${String(n).padStart(2, '0')}`;
+  }, []);
+
+  const getFriendlyDemoEmail = React.useCallback((id: string, email: string) => {
+    const rawId = (id || '').toString().trim();
+    if (!rawId.toUpperCase().startsWith('DUM_')) return email;
+    const friendly = getFriendlyDemoId(rawId);
+    const nn = friendly.split('_')[1] || '';
+    if (!nn) return email;
+    return `dum_${nn}_example@gmail.com`;
+  }, [getFriendlyDemoId]);
+
   const getTodayLocal = React.useCallback(() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -584,7 +603,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                   <div className="flex items-center gap-3 mb-4 relative">
                       <img src={getAvatarSrc(selectedEmployee.avatar)} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
                       <div className="min-w-0 flex-1">
-                          <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{selectedEmployee.id}</p>
+                          <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{getFriendlyDemoId(selectedEmployee.id)}</p>
                           <h3 className="text-base font-bold text-slate-900 truncate">{selectedEmployee.fullName}</h3>
                           <p className="text-xs text-slate-500 font-medium truncate">{selectedEmployee.role}</p>
                           <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -610,7 +629,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                       </div>
                       <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
                           <p className="text-[10px] text-slate-400 font-medium uppercase">Email</p>
-                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{selectedEmployee.email}</p>
+                          <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{getFriendlyDemoEmail(selectedEmployee.id, selectedEmployee.email)}</p>
                       </div>
                   </div>
 
