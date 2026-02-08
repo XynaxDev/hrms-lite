@@ -268,7 +268,7 @@ class EmployeeService:
     ) -> List[Employee]:
         query = db.query(Employee).filter(Employee.department == department)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         return query.all()
 
     @staticmethod
@@ -282,7 +282,7 @@ class EmployeeService:
     ) -> List[Employee]:
         query = db.query(Employee).filter(Employee.status == status)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         return query.all()
 
     @staticmethod
@@ -290,7 +290,7 @@ class EmployeeService:
         """Get total employee count."""
         query = db.query(Employee)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         return query.count()
 
     @staticmethod
@@ -300,7 +300,7 @@ class EmployeeService:
 
         query = db.query(Employee.department, func.count(Employee.id).label("count"))
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         result = query.group_by(Employee.department).all()
 
         return {
@@ -315,7 +315,7 @@ class EmployeeService:
 
         query = db.query(Employee.status, func.count(Employee.id).label("count"))
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         result = query.group_by(Employee.status).all()
 
         return {

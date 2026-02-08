@@ -167,6 +167,36 @@ export async function fetchAttendance(date?: string) {
   return data;
 }
 
+export async function fetchAttendanceByDateAndStatus(date: string, status: string) {
+  const params = new URLSearchParams();
+  if (date) params.append('date', date);
+  if (status) params.append('status', status);
+
+  const url = `${API_BASE_URL}/attendance${params.toString() ? '?' + params.toString() : ''}`;
+  const response = await fetch(url, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to fetch attendance');
+  const data = await response.json();
+
+  if (data.attendance_records) {
+    data.attendance_records = data.attendance_records.map((record: any) => ({
+      id: record.id,
+      employeeId: record.employee_id,
+      employeeName: record.employee_name,
+      avatar: record.avatar,
+      role: record.role,
+      date: record.date,
+      status: record.status,
+      checkIn: record.check_in,
+      checkOut: record.check_out,
+      workHours: record.work_hours,
+    }));
+  }
+
+  return data;
+}
+
 export async function fetchAttendanceSummary(startDate?: string, endDate?: string) {
   const getTodayLocal = () => {
     const d = new Date();

@@ -6,7 +6,7 @@ import Dialog from './ui/Dialog';
 import Select from './ui/Select';
 import Calendar from './ui/Calendar';
 import { DEPARTMENTS } from '../constants';
-import { fetchAttendanceSummary } from '../services/api';
+import { fetchAttendanceByDateAndStatus, fetchAttendanceSummary } from '../services/api';
 
 interface DashboardProps {
   employees: Employee[];
@@ -26,6 +26,15 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<any>(null);
   const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
+  const [leaveTodayRecords, setLeaveTodayRecords] = useState<any[]>([]);
+
+  const getTodayLocal = React.useCallback(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
 
   const loadAttendanceSummary = useCallback(async () => {
     try {
@@ -37,8 +46,20 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
     }
   }, []);
 
+  const loadLeaveToday = useCallback(async () => {
+    try {
+      const today = getTodayLocal();
+      const data = await fetchAttendanceByDateAndStatus(today, 'On Leave');
+      setLeaveTodayRecords(Array.isArray(data?.attendance_records) ? data.attendance_records : []);
+    } catch (err) {
+      console.error('Error loading leave today:', err);
+      setLeaveTodayRecords([]);
+    }
+  }, [getTodayLocal]);
+
   useEffect(() => {
     loadAttendanceSummary();
+    loadLeaveToday();
 
     const onFocus = () => loadAttendanceSummary();
     const onAttendanceUpdated = () => loadAttendanceSummary();
@@ -48,7 +69,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('attendance:updated', onAttendanceUpdated as EventListener);
     };
-  }, [loadAttendanceSummary]);
+  }, [loadAttendanceSummary, loadLeaveToday]);
 
   useEffect(() => {
     if (!selectedEmployee) return;
@@ -73,12 +94,19 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
 
   const derived = useMemo(() => {
     const activeEmployees = employees.filter(e => e.status === 'Active').length;
-    const leaveEmployees = (attendanceSummary || []).reduce((sum, s: any) => sum + (Number(s?.on_leave ?? 0) || 0), 0);
+    const leaveEmployees = Array.isArray(leaveTodayRecords) ? leaveTodayRecords.length : 0;
     const attendanceRate = Math.round((activeEmployees / employees.length) * 100) || 0;
-    const leaveAvatars: Employee[] = [];
+    const leaveIds = new Set(
+      (leaveTodayRecords || [])
+        .map((r: any) => (r?.employeeId ?? r?.employee_id ?? '').toString().trim())
+        .filter(Boolean)
+    );
+    const leavePeople = employees.filter(e => leaveIds.has(e.id));
+    const leaveAvatars = leavePeople.slice(0, 3);
     const quickTeam = employees.slice(0, 6);
-    return { activeEmployees, leaveEmployees, attendanceRate, leaveAvatars, quickTeam };
-  }, [attendanceSummary, employees]);
+    const leaveOverflow = Math.max(0, leavePeople.length - leaveAvatars.length);
+    return { activeEmployees, leaveEmployees, attendanceRate, leaveAvatars, leavePeople, leaveOverflow, quickTeam };
+  }, [employees, leaveTodayRecords]);
 
   const handleDownloadReport = useCallback(() => {
     const activeCount = derived.activeEmployees;
@@ -267,12 +295,57 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
           <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">On Leave Today</p>
           <div className="mt-4 flex items-baseline gap-2">
             <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{derived.leaveEmployees}</h3>
-            <span className="text-sm font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md">Active</span>
+            <span className="text-sm font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md">Employees</span>
           </div>
-          <div className="mt-3 flex -space-x-2">
+
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex -space-x-2">
               {derived.leaveAvatars.map(e => (
-                   <img key={e.id} src={getAvatarSrc(e.avatar)} alt={e.fullName} className="h-6 w-6 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover" />
+                <img
+                  key={e.id}
+                  src={getAvatarSrc(e.avatar)}
+                  alt={e.fullName}
+                  className="h-7 w-7 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover"
+                />
               ))}
+              {derived.leaveOverflow > 0 && (
+                <div className="h-7 w-7 rounded-full border-2 border-white ring-1 ring-slate-100 bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">
+                  +{derived.leaveOverflow}
+                </div>
+              )}
+            </div>
+
+            <div className="text-[11px] font-semibold text-slate-400">
+              Hover to view
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-4 top-[5.75rem] opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-150">
+            <div className="pointer-events-auto rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-xl shadow-slate-900/10 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm font-bold text-slate-900">On Leave Today</div>
+                  <div className="text-xs text-slate-500 font-medium">{derived.leaveEmployees} employees</div>
+                </div>
+              </div>
+
+              {derived.leavePeople.length === 0 ? (
+                <div className="text-sm text-slate-500">No one is on leave today.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 max-h-56 overflow-auto custom-scrollbar pr-1">
+                  {derived.leavePeople.slice(0, 12).map((emp) => (
+                    <div key={emp.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2 hover:bg-slate-50 transition-colors">
+                      <img src={getAvatarSrc(emp.avatar)} alt={emp.fullName} className="h-9 w-9 rounded-full object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-slate-900 truncate">{emp.fullName}</div>
+                        <div className="text-xs text-slate-500 font-medium truncate">{emp.role}</div>
+                      </div>
+                      <div className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg">On Leave</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
