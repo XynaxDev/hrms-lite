@@ -16,6 +16,7 @@ from app.models.activity import Activity
 from app.models.attendance import Attendance
 import uuid
 from sqlalchemy import func
+from app.core.config import get_settings
 
 
 class EmployeeService:
@@ -60,7 +61,11 @@ class EmployeeService:
         query = db.query(Employee)
 
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
 
         # Apply filters
         if department:
@@ -106,7 +111,11 @@ class EmployeeService:
     ) -> Optional[Employee]:
         query = db.query(Employee).filter(Employee.id == employee_id)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         return query.first()
 
     @staticmethod
@@ -120,7 +129,11 @@ class EmployeeService:
             func.lower(Employee.id) == employee_id.strip().lower()
         )
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         return query.first()
 
     @staticmethod
@@ -134,7 +147,11 @@ class EmployeeService:
     ) -> Optional[Employee]:
         query = db.query(Employee).filter(Employee.email == email)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         return query.first()
 
     @staticmethod
@@ -268,7 +285,11 @@ class EmployeeService:
     ) -> List[Employee]:
         query = db.query(Employee).filter(Employee.department == department)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         return query.all()
 
     @staticmethod
@@ -282,7 +303,11 @@ class EmployeeService:
     ) -> List[Employee]:
         query = db.query(Employee).filter(Employee.status == status)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         return query.all()
 
     @staticmethod
@@ -290,7 +315,11 @@ class EmployeeService:
         """Get total employee count."""
         query = db.query(Employee)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         return query.count()
 
     @staticmethod
@@ -300,7 +329,11 @@ class EmployeeService:
 
         query = db.query(Employee.department, func.count(Employee.id).label("count"))
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         result = query.group_by(Employee.department).all()
 
         return {
@@ -315,7 +348,11 @@ class EmployeeService:
 
         query = db.query(Employee.status, func.count(Employee.id).label("count"))
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            settings = get_settings()
+            if settings.DEMO_SHARED_EMPLOYEES:
+                query = query.filter(or_(Employee.device_id.is_(None), Employee.device_id == scope_key))
+            else:
+                query = query.filter(Employee.device_id == scope_key)
         result = query.group_by(Employee.status).all()
 
         return {

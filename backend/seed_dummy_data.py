@@ -119,7 +119,19 @@ def seed_complete_demo_data(count: int) -> None:
     db = SessionLocal()
     try:
         seed_global_demo_data(db, employee_count=count)
-        print(f"Complete demo data seeded for {count} employees (including attendance and activities)")
+        print(f"Demo employees seeded for {count} employees")
+    except Exception as e:
+        print(f"Error seeding demo data: {e}")
+    finally:
+        db.close()
+
+
+def seed_complete_demo_data_scoped(count: int, scope_key: str) -> None:
+    """Seed demo employees for a specific device scope (demo isolation)."""
+    db = SessionLocal()
+    try:
+        seed_global_demo_data(db, employee_count=count, scope_key=scope_key)
+        print(f"Demo employees seeded for {count} employees (scope={scope_key})")
     except Exception as e:
         print(f"Error seeding demo data: {e}")
     finally:
@@ -131,7 +143,7 @@ def main() -> None:
     parser.add_argument("--count", type=int, default=10, help="Number of employees to create")
     parser.add_argument("--employees-only", action="store_true", help="Only seed employees (no attendance/activities)")
     parser.add_argument("--clear", action="store_true", help="Clear demo data instead of seeding")
-    parser.add_argument("--scope", type=str, default="", help="Device scope key (X-Device-Id) to clear")
+    parser.add_argument("--scope", type=str, default="", help="Device scope key (X-Device-Id) to clear or seed")
     parser.add_argument("--global", dest="clear_global", action="store_true", help="When clearing, target global rows (device_id NULL)")
     args = parser.parse_args()
 
@@ -151,7 +163,11 @@ def main() -> None:
         added = seed_dummy_employees(args.count)
         print(f"Employee seed complete. Added {added} employees.")
     else:
-        seed_complete_demo_data(args.count)
+        v = (args.scope or "").strip()
+        if v:
+            seed_complete_demo_data_scoped(args.count, v)
+        else:
+            seed_complete_demo_data(args.count)
 
 
 if __name__ == "__main__":

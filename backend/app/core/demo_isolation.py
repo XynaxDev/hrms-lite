@@ -5,6 +5,7 @@ from fastapi import Depends, Header, Request
 from app.core.config import get_settings
 from app.db.database import SessionLocal
 from app.seed import seed_global_demo_data
+from app.services.activity_service import ActivityService
 
 settings = get_settings()
 
@@ -41,7 +42,11 @@ async def get_demo_scope(
         if scope_key and settings.DEMO_AUTO_SEED:
             db = SessionLocal()
             try:
-                seed_global_demo_data(db, scope_key=scope_key)
+                if settings.DEMO_SHARED_EMPLOYEES:
+                    seed_global_demo_data(db)
+                    ActivityService.seed_initial_activities(db, scope_key=scope_key)
+                else:
+                    seed_global_demo_data(db, scope_key=scope_key)
             finally:
                 db.close()
         return scope_key
@@ -51,7 +56,11 @@ async def get_demo_scope(
     if scope_key and settings.DEMO_AUTO_SEED:
         db = SessionLocal()
         try:
-            seed_global_demo_data(db, scope_key=scope_key)
+            if settings.DEMO_SHARED_EMPLOYEES:
+                seed_global_demo_data(db)
+                ActivityService.seed_initial_activities(db, scope_key=scope_key)
+            else:
+                seed_global_demo_data(db, scope_key=scope_key)
         finally:
             db.close()
     return scope_key

@@ -63,15 +63,31 @@ def _latest_attendance_date(db: Session, scope_key: str | None) -> str:
     return (latest[0] if latest and latest[0] else datetime.now().strftime("%Y-%m-%d"))
 
 
+def _calendar_today() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _has_attendance_for_date(db: Session, date_str: str, scope_key: str | None) -> bool:
+    q = db.query(Attendance.id).filter(Attendance.date == date_str)
+    if scope_key:
+        q = q.filter(Attendance.device_id == scope_key)
+    return q.first() is not None
+
+
 def _resolve_attendance_date(date_str: str | None, db: Session, scope_key: str | None) -> str:
     if date_str is None:
-        return _latest_attendance_date(db, scope_key)
+        # Default behavior: if there is any data for calendar-today, use it.
+        # Otherwise fall back to the latest available attendance date.
+        today = _calendar_today()
+        return today if _has_attendance_for_date(db, today, scope_key) else _latest_attendance_date(db, scope_key)
     s = date_str.strip() if isinstance(date_str, str) else str(date_str)
     if not s:
-        return _latest_attendance_date(db, scope_key)
+        today = _calendar_today()
+        return today if _has_attendance_for_date(db, today, scope_key) else _latest_attendance_date(db, scope_key)
     low = s.lower()
     if low in {"today", "now"}:
-        return _latest_attendance_date(db, scope_key)
+        today = _calendar_today()
+        return today if _has_attendance_for_date(db, today, scope_key) else _latest_attendance_date(db, scope_key)
     return _normalize_date(s)
 
 

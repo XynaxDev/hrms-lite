@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     DEMO_ISOLATION_ENABLED: bool = False
     DEMO_ISOLATION_MODE: str = "device"  # device | ip
     DEMO_AUTO_SEED: bool = True
+    DEMO_SHARED_EMPLOYEES: bool = False
 
     # Server
     HOST: str = "0.0.0.0"

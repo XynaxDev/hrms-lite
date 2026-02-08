@@ -192,7 +192,7 @@ def startup_event():
 
     db = SessionLocal()
     try:
-        if not settings.DEMO_ISOLATION_ENABLED:
+        if (not settings.DEMO_ISOLATION_ENABLED) or settings.DEMO_SHARED_EMPLOYEES:
             seed_global_demo_data(db)
     finally:
         db.close()
