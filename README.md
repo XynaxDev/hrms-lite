@@ -1,6 +1,7 @@
 <div align="center">
 
-### `👨‍💼 HRMS Lite | Enterprise Intelligent Workforce Management`
+# `👨‍💼 HRMS Lite | Enterprise Intelligent Workforce Management`
+![landing](./frontend/public/landing.png)
 
 ![Status](https://img.shields.io/badge/Status-Live-brightgreen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -508,7 +509,7 @@ Having trouble? We're here to help!
 
 - 🐛 **Bug Reports:** [Open an issue](https://github.com/XynaxDev/hrms-lite/issues)
 - 💡 **Feature Requests:** [Start a discussion](https://github.com/XynaxDev/hrms-lite/discussions)
-- 📧 **Email:** your.email@example.com
+- 📧 **Email:** akashkumar.cs27@gmail.com
 - 💬 **Discussions:** [GitHub Discussions](https://github.com/XynaxDev/hrms-lite/discussions)
 
 
@@ -542,7 +543,7 @@ If you find HRMS Lite useful, please consider supporting it:
 
 <div align="center">
 
-**[⬆ Back to Top](#hrms-lite--enterprise-intelligent-workforce-management)**
+**[⬆ Back to Top](#-hrms-lite--enterprise-intelligent-workforce-management)**
 
 Made with ❤️ using React, FastAPI, and AI • © 2026 Akash
 
