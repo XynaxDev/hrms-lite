@@ -1,7 +1,7 @@
 
 export type Department = 'Engineering' | 'Design' | 'Marketing' | 'HR' | 'Finance';
 
-export type Status = 'Active' | 'On Leave' | 'Terminated';
+export type Status = 'Active' | 'Inactive' | 'Terminated';
 
 export interface Employee {
   id: string;

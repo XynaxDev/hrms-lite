@@ -58,6 +58,10 @@ const mapEmployeeFromDB = (data: any) => {
   if (!mapped.id) {
     console.warn('Employee data missing ID:', data);
   }
+
+  if (mapped.status === 'On Leave') {
+    mapped.status = 'Active';
+  }
   
   return mapped;
 };

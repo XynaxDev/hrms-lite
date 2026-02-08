@@ -60,18 +60,18 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
 
   const statusOptions = [
     { value: 'Active', label: 'Active' },
-    { value: 'On Leave', label: 'On Leave' },
+    { value: 'Inactive', label: 'Inactive' },
     { value: 'Terminated', label: 'Terminated' }
   ];
 
   const derived = useMemo(() => {
     const activeEmployees = employees.filter(e => e.status === 'Active').length;
-    const leaveEmployees = employees.filter(e => e.status === 'On Leave').length;
+    const leaveEmployees = (attendanceSummary || []).reduce((sum, s: any) => sum + (Number(s?.on_leave ?? 0) || 0), 0);
     const attendanceRate = Math.round((activeEmployees / employees.length) * 100) || 0;
-    const leaveAvatars = employees.filter(e => e.status === 'On Leave').slice(0, 3);
-    const quickTeam = employees.slice(0, 5);
+    const leaveAvatars: Employee[] = [];
+    const quickTeam = employees.slice(0, 6);
     return { activeEmployees, leaveEmployees, attendanceRate, leaveAvatars, quickTeam };
-  }, [employees]);
+  }, [attendanceSummary, employees]);
 
   const handleDownloadReport = useCallback(() => {
     const activeCount = derived.activeEmployees;
@@ -305,7 +305,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                     </td>
                     <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ring-2 ring-white shadow-sm ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'On Leave' ? 'bg-amber-400' : 'bg-rose-500'}`}></div>
+                        <div className={`h-2 w-2 rounded-full ring-2 ring-white shadow-sm ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'Inactive' ? 'bg-slate-400' : 'bg-rose-500'}`}></div>
                         <span className="text-xs font-medium text-slate-600">{emp.status}</span>
                         </div>
                     </td>
@@ -342,8 +342,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                           <h3 className="text-base font-bold text-slate-900 truncate">{selectedEmployee.fullName}</h3>
                           <p className="text-xs text-slate-500 font-medium truncate">{selectedEmployee.role}</p>
                           <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                              selectedEmployee.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 
-                              selectedEmployee.status === 'On Leave' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                              selectedEmployee.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : selectedEmployee.status === 'Inactive' ? 'bg-slate-100 text-slate-700' : 'bg-rose-100 text-rose-700'
                           }`}>
                               {selectedEmployee.status}
                           </span>
@@ -498,7 +497,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                         </div>
                         <div>
                             <label className="text-xs font-medium text-slate-700 mb-1 block">Joined Date</label>
-                            <Calendar value={editEmployee.joinedDate} onChange={(d) => setEditEmployee({...editEmployee, joinedDate: d})} />
+                            <Calendar value={editEmployee.joinedDate} onChange={() => {}} disabled />
                         </div>
                     </div>
                 </div>

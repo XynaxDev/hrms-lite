@@ -6,11 +6,13 @@ interface CalendarProps {
   value: string; // YYYY-MM-DD
   onChange: (date: string) => void;
   position?: 'up' | 'down' | 'auto';
+  disabled?: boolean;
 }
 
-const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' }) => {
+const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto', disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropDirection, setDropDirection] = useState<'up' | 'down'>('down');
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   
@@ -41,6 +43,7 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
   };
 
   const handleDateClick = (day: number) => {
+    if (disabled) return;
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
     const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -50,9 +53,10 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const target = event.target as Node;
+      const inAnchor = !!containerRef.current?.contains(target);
+      const inDropdown = !!dropdownRef.current?.contains(target);
+      if (!inAnchor && !inDropdown) setIsOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -135,7 +139,8 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
     <div className={isOpen ? 'relative z-[9999]' : 'relative'} ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
         className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm active:scale-95 w-full min-w-[180px]"
       >
         <span className="material-symbols-outlined text-slate-500 text-lg">calendar_today</span>
@@ -145,6 +150,7 @@ const Calendar: React.FC<CalendarProps> = ({ value, onChange, position = 'auto' 
       {isOpen && anchorRect && typeof document !== 'undefined' &&
         createPortal(
           <div
+            ref={dropdownRef}
             className="fixed z-[10000] w-72 rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200 p-4"
             style={{
               left: Math.max(8, Math.min(anchorRect.left, window.innerWidth - 8 - 288)),

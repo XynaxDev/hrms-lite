@@ -79,7 +79,7 @@ const EmployeeCard = React.memo(function EmployeeCard({
 
         <div className="relative mb-4">
           <img src={emp.avatar} alt={emp.fullName} className="h-24 w-24 rounded-full object-cover shadow-lg ring-4 ring-slate-50 transition-transform group-hover:scale-105" />
-          <div className={`absolute bottom-0 right-0 h-5 w-5 rounded-full border-[3px] border-white ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'On Leave' ? 'bg-amber-400' : 'bg-rose-500'}`} />
+          <div className={`absolute bottom-0 right-0 h-5 w-5 rounded-full border-[3px] border-white ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'Inactive' ? 'bg-slate-400' : 'bg-rose-500'}`} />
         </div>
         
         <p className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">{emp.id}</p>
@@ -233,12 +233,12 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
         iconColor: 'text-emerald-600'
       },
       { 
-        label: 'On Leave', 
-        value: employees.filter(e => e.status === 'On Leave').length,
-        color: 'text-blue-600',
-        bg: 'bg-blue-50',
-        icon: 'airplane_ticket',
-        iconColor: 'text-blue-600'
+        label: 'Inactive', 
+        value: employees.filter(e => e.status === 'Inactive').length,
+        color: 'text-slate-600',
+        bg: 'bg-slate-50',
+        icon: 'pause_circle',
+        iconColor: 'text-slate-600'
       },
       { 
         label: 'Terminated', 
@@ -365,7 +365,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
 
   const statusOptions = [
     { value: 'Active', label: 'Active' },
-    { value: 'On Leave', label: 'On Leave' },
+    { value: 'Inactive', label: 'Inactive' },
     { value: 'Terminated', label: 'Terminated' }
   ];
 
@@ -646,7 +646,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                         <p className="text-xs text-slate-500 font-medium truncate">{selectedEmployee.role}</p>
                         <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                           selectedEmployee.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 
-                          selectedEmployee.status === 'On Leave' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                          selectedEmployee.status === 'Inactive' ? 'bg-slate-100 text-slate-700' : 'bg-rose-100 text-rose-700'
                         }`}>
                           {selectedEmployee.status}
                         </span>
@@ -797,7 +797,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                         </div>
                         <div>
                             <label className="text-xs font-medium text-slate-700 mb-1 block">Joined Date</label>
-                            <Calendar value={editEmployee.joinedDate} onChange={(d) => setEditEmployee({...editEmployee, joinedDate: d})} />
+                            <Calendar value={editEmployee.joinedDate} onChange={() => {}} disabled />
                         </div>
                     </div>
                 </div>
