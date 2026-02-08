@@ -14,6 +14,13 @@ interface EmployeesProps {
   onDeleteEmployee: (id: string) => void;
 }
 
+const getAvatarSrc = (avatar?: string) => {
+  const v = (avatar || '').trim();
+  if (v) return v;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F8FAFC"/><stop offset="1" stop-color="#E2E8F0"/></linearGradient></defs><rect width="128" height="128" rx="64" fill="url(#g)"/><circle cx="64" cy="52" r="20" fill="#CBD5E1"/><path d="M24 118c8-26 28-38 40-38s32 12 40 38" fill="#CBD5E1"/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const StatCard = React.memo(function StatCard({ stat }: { stat: any }) {
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
@@ -78,7 +85,7 @@ const EmployeeCard = React.memo(function EmployeeCard({
         </div>
 
         <div className="relative mb-4">
-          <img src={emp.avatar} alt={emp.fullName} className="h-24 w-24 rounded-full object-cover shadow-lg ring-4 ring-slate-50 transition-transform group-hover:scale-105" />
+          <img src={getAvatarSrc(emp.avatar)} alt={emp.fullName} className="h-24 w-24 rounded-full object-cover shadow-lg ring-4 ring-slate-50 transition-transform group-hover:scale-105" />
           <div className={`absolute bottom-0 right-0 h-5 w-5 rounded-full border-[3px] border-white ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'Inactive' ? 'bg-slate-400' : 'bg-rose-500'}`} />
         </div>
         
@@ -302,7 +309,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
       department: newEmployee.department as Department,
       status: 'Active',
       location: newEmployee.location || 'Remote',
-      avatar: newEmployee.avatarUrl || `https://i.pravatar.cc/150?u=${newEmployee.fullName.replace(/\s/g, '')}`,
+      avatar: newEmployee.avatarUrl || '',
       joinedDate: newEmployee.joinedDate || new Date().toISOString().split('T')[0]
     };
 
@@ -639,7 +646,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
           {selectedEmployee && (
               <div className="py-2">
                     <div className="flex items-center gap-3 mb-4 relative">
-                        <img src={selectedEmployee.avatar} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
+                        <img src={getAvatarSrc(selectedEmployee.avatar)} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{selectedEmployee.id}</p>
                         <h3 className="text-base font-bold text-slate-900 truncate">{selectedEmployee.fullName}</h3>
@@ -716,7 +723,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                 <div className="grid gap-3 py-3">
                     <div className="flex items-center gap-3 mb-1">
                         <div className="relative group cursor-pointer overflow-hidden rounded-full h-14 w-14 bg-slate-50 border-2 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-100 transition-all flex items-center justify-center shrink-0">
-                            <img src={editEmployee.avatar} alt="Preview" className="h-full w-full object-cover" />
+                            <img src={getAvatarSrc(editEmployee.avatar)} alt="Preview" className="h-full w-full object-cover" />
                             <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <span className="material-symbols-outlined text-lg text-white">add_a_photo</span>
                             </div>

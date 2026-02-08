@@ -15,6 +15,13 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onViewAll }) => {
+  const getAvatarSrc = React.useCallback((avatar?: string) => {
+    const v = (avatar || '').trim();
+    if (v) return v;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F8FAFC"/><stop offset="1" stop-color="#E2E8F0"/></linearGradient></defs><rect width="128" height="128" rx="64" fill="url(#g)"/><circle cx="64" cy="52" r="20" fill="#CBD5E1"/><path d="M24 118c8-26 28-38 40-38s32 12 40 38" fill="#CBD5E1"/></svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }, []);
+
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<any>(null);
@@ -264,7 +271,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
           </div>
           <div className="mt-3 flex -space-x-2">
               {derived.leaveAvatars.map(e => (
-                   <img key={e.id} src={e.avatar} alt={e.fullName} className="h-6 w-6 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover" />
+                   <img key={e.id} src={getAvatarSrc(e.avatar)} alt={e.fullName} className="h-6 w-6 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover" />
               ))}
           </div>
         </div>
@@ -296,7 +303,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                     <tr key={emp.id} className="group hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                        <img alt={emp.fullName} className="h-10 w-10 rounded-full object-cover shadow-sm" src={emp.avatar}/>
+                        <img alt={emp.fullName} className="h-10 w-10 rounded-full object-cover shadow-sm" src={getAvatarSrc(emp.avatar)}/>
                         <div>
                             <div className="font-semibold text-slate-900">{emp.fullName}</div>
                             <div className="text-xs text-slate-500 font-medium">{emp.role}</div>
@@ -336,7 +343,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
           {selectedEmployee && (
               <div className="py-2">
                   <div className="flex items-center gap-3 mb-4 relative">
-                      <img src={selectedEmployee.avatar} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
+                      <img src={getAvatarSrc(selectedEmployee.avatar)} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
                       <div className="min-w-0 flex-1">
                           <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{selectedEmployee.id}</p>
                           <h3 className="text-base font-bold text-slate-900 truncate">{selectedEmployee.fullName}</h3>

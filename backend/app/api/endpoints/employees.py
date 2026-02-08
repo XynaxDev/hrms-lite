@@ -132,16 +132,6 @@ def create_employee(
     scope_key: Optional[str] = Depends(get_demo_scope),
 ):
     """Create a new employee."""
-    # If the caller provides an ID that already exists, fall back to server-side ID generation
-    # to avoid 500/409 loops in deployed environments.
-    if employee.id:
-        try:
-            existing_by_id = EmployeeService.get_employee_by_id(db, employee.id)
-            if existing_by_id:
-                employee = employee.model_copy(update={"id": None})
-        except Exception:
-            pass
-
     # Check for duplicate email
     existing = EmployeeService.get_employee_by_email(db, employee.email)
     if existing:
