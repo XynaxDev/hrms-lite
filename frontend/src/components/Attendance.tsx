@@ -5,6 +5,7 @@ import { fetchAttendance, markAttendance, updateAttendance } from '../services/a
 import Calendar from './ui/Calendar';
 import Dialog from './ui/Dialog';
 import Select from './ui/Select';
+import { formatDemoId } from '../utils/demoFormat';
 
 interface AttendanceProps {
   employees: Employee[];
@@ -323,7 +324,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                     />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-bold text-slate-900 truncate">{e.fullName}</div>
-                      <div className="text-[11px] font-mono font-bold text-slate-400 truncate">{e.id}</div>
+                      <div className="text-[11px] font-mono font-bold text-slate-400 truncate">{formatDemoId(e.id)}</div>
                     </div>
                   </label>
                 );
@@ -479,14 +480,14 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                   {currentRecords.map((record) => (
                     <tr key={record.id} className="group hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="font-mono text-xs font-bold text-slate-600">{record.employeeId}</span>
+                        <span className="font-mono text-xs font-bold text-slate-600">{formatDemoId(record.employeeId)}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img src={getEmployeeAvatarForRecord(record.employeeId, record.avatar)} alt={record.employeeName} className="h-10 w-10 rounded-full object-cover border border-slate-100 shadow-sm" />
                           <div>
                             <div className="font-bold text-slate-900">{record.employeeName}</div>
-                            <div className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider">{record.employeeId}</div>
+                            <div className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider">{formatDemoId(record.employeeId)}</div>
                             <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{record.role}</div>
                           </div>
                         </div>
@@ -629,7 +630,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
             <div className="text-xs font-black text-slate-400 uppercase tracking-widest">Record</div>
             <div className="text-sm font-bold text-slate-900">
               {editingRecord?.employeeName}
-              {editingRecord?.employeeId ? <span className="text-slate-400 font-semibold"> · {editingRecord.employeeId}</span> : null}
+              {editingRecord?.employeeId ? <span className="text-slate-400 font-semibold"> · {formatDemoId(editingRecord.employeeId)}</span> : null}
             </div>
             <div className="text-xs text-slate-500 font-medium">Date: {editingRecord?.date}</div>
           </div>

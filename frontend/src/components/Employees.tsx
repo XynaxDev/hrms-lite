@@ -6,6 +6,7 @@ import Dialog from './ui/Dialog';
 import Calendar from './ui/Calendar';
 import { Employee, Department } from '../types';
 import { fetchAttendanceSummary } from '../services/api';
+import { formatDemoEmail, formatDemoId } from '../utils/demoFormat';
 
 interface EmployeesProps {
   employees: Employee[];
@@ -89,7 +90,7 @@ const EmployeeCard = React.memo(function EmployeeCard({
           <div className={`absolute bottom-0 right-0 h-5 w-5 rounded-full border-[3px] border-white ${emp.status === 'Active' ? 'bg-emerald-500' : emp.status === 'Inactive' ? 'bg-slate-400' : 'bg-rose-500'}`} />
         </div>
         
-        <p className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">{emp.id}</p>
+        <p className="text-xs text-slate-400 font-mono font-bold uppercase tracking-wider mb-1">{formatDemoId(emp.id)}</p>
         <h3 className="text-base font-bold text-slate-900">{emp.fullName}</h3>
         <p className="text-sm text-slate-500 mb-1 font-medium">{emp.role}</p>
         <span className="mb-4 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
@@ -107,7 +108,7 @@ const EmployeeCard = React.memo(function EmployeeCard({
           </div>
           <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-medium">
             <span className="material-symbols-outlined text-sm text-slate-400">mail</span>
-            <span className="truncate max-w-[150px]">{emp.email}</span>
+            <span className="truncate max-w-[150px]">{formatDemoEmail(emp.id, emp.email)}</span>
           </div>
           
           <button 
@@ -147,25 +148,6 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  const getFriendlyDemoId = (id: string) => {
-    const raw = (id || '').toString().trim();
-    if (!raw.toUpperCase().startsWith('DUM_')) return raw;
-    const parts = raw.split('_');
-    const last = parts[parts.length - 1];
-    const n = parseInt(last, 10);
-    if (!Number.isFinite(n)) return raw;
-    return `DUM_${String(n).padStart(2, '0')}`;
-  };
-
-  const getFriendlyDemoEmail = (id: string, email: string) => {
-    const rawId = (id || '').toString().trim();
-    if (!rawId.toUpperCase().startsWith('DUM_')) return email;
-    const friendly = getFriendlyDemoId(rawId);
-    const nn = friendly.split('_')[1] || '';
-    if (!nn) return email;
-    return `dum_${nn}_example@gmail.com`;
-  };
 
   const [editEmployee, setEditEmployee] = useState<any>(null);
   
@@ -683,7 +665,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                     <div className="flex items-center gap-3 mb-4 relative">
                         <img src={getAvatarSrc(selectedEmployee.avatar)} alt={selectedEmployee.fullName} className="h-16 w-16 rounded-full object-cover shadow-lg border-2 border-white shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{getFriendlyDemoId(selectedEmployee.id)}</p>
+                        <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider mb-0.5">{formatDemoId(selectedEmployee.id)}</p>
                         <h3 className="text-base font-bold text-slate-900 truncate">{selectedEmployee.fullName}</h3>
                         <p className="text-xs text-slate-500 font-medium truncate">{selectedEmployee.role}</p>
                         <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -710,7 +692,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                       </div>
                       <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
                         <p className="text-[10px] text-slate-400 font-medium uppercase">Email</p>
-                        <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{getFriendlyDemoEmail(selectedEmployee.id, selectedEmployee.email)}</p>
+                        <p className="text-xs font-semibold text-slate-900 mt-0.5 truncate">{formatDemoEmail(selectedEmployee.id, selectedEmployee.email)}</p>
                       </div>
                       {/* Always show attendance cards, even if all are zero */}
                       {(() => {
