@@ -106,7 +106,9 @@ def mark_attendance(
 ):
     """Mark attendance for an employee (simplified endpoint)."""
     # Verify employee exists
-    employee = EmployeeService.get_employee_by_id(db, request.employee_id)
+    employee = EmployeeService.get_employee_by_id_scoped_case_insensitive(
+        db, request.employee_id, scope_key
+    )
     if not employee:
         raise HTTPException(
             status_code=404, detail=f"Employee with ID {request.employee_id} not found"
@@ -127,7 +129,9 @@ def create_attendance(
 ):
     """Create a new attendance record."""
     # Verify employee exists
-    employee = EmployeeService.get_employee_by_id(db, attendance.employee_id)
+    employee = EmployeeService.get_employee_by_id_scoped_case_insensitive(
+        db, attendance.employee_id, scope_key
+    )
     if not employee:
         raise HTTPException(
             status_code=404,

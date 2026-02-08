@@ -11,6 +11,13 @@ interface AttendanceProps {
   onToast: (msg: string, type: 'success' | 'error') => void;
 }
 
+const getAvatarSrc = (avatar?: string) => {
+  const v = (avatar || '').trim();
+  if (v) return v;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="64" fill="#0F172A"/><circle cx="64" cy="52" r="20" fill="#334155"/><path d="M24 118c8-26 28-38 40-38s32 12 40 38" fill="#334155"/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
   const getTodayLocal = () => {
     const d = new Date();
@@ -236,7 +243,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <img src={record.avatar} alt={record.employeeName} className="h-10 w-10 rounded-full object-cover border border-slate-100 shadow-sm" />
+                          <img src={getAvatarSrc(record.avatar)} alt={record.employeeName} className="h-10 w-10 rounded-full object-cover border border-slate-100 shadow-sm" />
                           <div>
                             <div className="font-bold text-slate-900">{record.employeeName}</div>
                             <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{record.role}</div>

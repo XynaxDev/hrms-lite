@@ -2,6 +2,13 @@
 import React from 'react';
 import { MOCK_CANDIDATES } from '../constants';
 
+const getAvatarSrc = (avatar?: string) => {
+  const v = (avatar || '').trim();
+  if (v) return v;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="64" fill="#0F172A"/><circle cx="64" cy="52" r="20" fill="#334155"/><path d="M24 118c8-26 28-38 40-38s32 12 40 38" fill="#334155"/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const Recruitment: React.FC = () => {
   const stages = ['Applied', 'Screening', 'Interview', 'Hired'];
 
@@ -37,7 +44,7 @@ const Recruitment: React.FC = () => {
                   <div key={candidate.id} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-move group">
                     <div className="flex items-start justify-between mb-3">
                        <div className="flex items-center gap-3">
-                          <img src={candidate.avatar} alt={candidate.name} className="h-9 w-9 rounded-full object-cover" />
+                          <img src={getAvatarSrc(candidate.avatar)} alt={candidate.name} className="h-9 w-9 rounded-full object-cover" />
                           <div>
                              <h4 className="text-sm font-semibold text-slate-900">{candidate.name}</h4>
                              <p className="text-xs text-slate-500">{candidate.role}</p>

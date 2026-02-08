@@ -15,6 +15,7 @@ from app.schemas.employee import (
 from app.models.activity import Activity
 from app.models.attendance import Attendance
 import uuid
+from sqlalchemy import func
 
 
 class EmployeeService:
@@ -67,10 +68,37 @@ class EmployeeService:
         return db.query(Employee).filter(Employee.id == employee_id).first()
 
     @staticmethod
+    def get_employee_by_id_case_insensitive(
+        db: Session, employee_id: str
+    ) -> Optional[Employee]:
+        """Get a single employee by ID, case-insensitive."""
+        if not employee_id:
+            return None
+        return (
+            db.query(Employee)
+            .filter(func.lower(Employee.id) == employee_id.strip().lower())
+            .first()
+        )
+
+    @staticmethod
     def get_employee_by_id_scoped(
         db: Session, employee_id: str, scope_key: Optional[str] = None
     ) -> Optional[Employee]:
         query = db.query(Employee).filter(Employee.id == employee_id)
+        if scope_key:
+            query = query.filter(Employee.device_id == scope_key)
+        return query.first()
+
+    @staticmethod
+    def get_employee_by_id_scoped_case_insensitive(
+        db: Session, employee_id: str, scope_key: Optional[str] = None
+    ) -> Optional[Employee]:
+        """Get a single employee by ID, scoped + case-insensitive."""
+        if not employee_id:
+            return None
+        query = db.query(Employee).filter(
+            func.lower(Employee.id) == employee_id.strip().lower()
+        )
         if scope_key:
             query = query.filter(Employee.device_id == scope_key)
         return query.first()

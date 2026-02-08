@@ -106,13 +106,13 @@ def get_employee(
     scope_key: Optional[str] = Depends(get_demo_scope),
 ):
     """Get a single employee by ID."""
-    employee = EmployeeService.get_employee_by_id(db, employee_id)
+    employee = EmployeeService.get_employee_by_id_scoped_case_insensitive(
+        db, employee_id, scope_key
+    )
     if not employee:
         raise HTTPException(
             status_code=404, detail=f"Employee with ID {employee_id} not found"
         )
-    if scope_key and employee.device_id != scope_key:
-        raise HTTPException(status_code=404, detail=f"Employee with ID {employee_id} not found")
     try:
         if (
             employee.status == StatusEnum.ON_LEAVE
@@ -162,14 +162,13 @@ def update_employee(
 ):
     """Update an existing employee."""
     # Check if employee exists
-    existing = EmployeeService.get_employee_by_id(db, employee_id)
+    existing = EmployeeService.get_employee_by_id_scoped_case_insensitive(
+        db, employee_id, scope_key
+    )
     if not existing:
         raise HTTPException(
             status_code=404, detail=f"Employee with ID {employee_id} not found"
         )
-
-    if scope_key and existing.device_id != scope_key:
-        raise HTTPException(status_code=404, detail=f"Employee with ID {employee_id} not found")
 
     # Check for duplicate email if email is being updated
     if employee.email and employee.email != existing.email:
@@ -180,7 +179,7 @@ def update_employee(
                 detail=f"An employee with email {employee.email} already exists",
             )
 
-    updated = EmployeeService.update_employee(db, employee_id, employee)
+    updated = EmployeeService.update_employee(db, existing.id, employee)
     return updated
 
 
@@ -202,16 +201,15 @@ def delete_employee(
         raise HTTPException(status_code=400, detail="Employee ID is required")
 
     logger.info(f"Attempting to delete employee: {employee_id}")
-    existing = EmployeeService.get_employee_by_id(db, employee_id)
+    existing = EmployeeService.get_employee_by_id_scoped_case_insensitive(
+        db, employee_id, scope_key
+    )
     if not existing:
       raise HTTPException(
           status_code=404, detail=f"Employee with ID {employee_id} not found"
       )
 
-    if scope_key and existing.device_id != scope_key:
-        raise HTTPException(status_code=404, detail=f"Employee with ID {employee_id} not found")
-
-    deleted = EmployeeService.delete_employee(db, employee_id)
+    deleted = EmployeeService.delete_employee(db, existing.id)
 
     if not deleted:
         logger.warning(f"Employee not found: {employee_id}")
