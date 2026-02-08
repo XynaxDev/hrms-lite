@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
 
 from app.db.database import get_db
@@ -139,7 +140,17 @@ def create_employee(
             detail=f"An employee with email {employee.email} already exists",
         )
 
-    return EmployeeService.create_employee_scoped(db, employee, scope_key)
+    try:
+        return EmployeeService.create_employee_scoped(db, employee, scope_key)
+    except IntegrityError as exc:
+        db.rollback()
+        msg = str(getattr(exc, "orig", exc))
+        if "employees_pkey" in msg or "Key (id)=" in msg:
+            raise HTTPException(
+                status_code=409,
+                detail="Employee ID already exists. Please use a different ID.",
+            ) from exc
+        raise HTTPException(status_code=409, detail="Duplicate record") from exc
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
