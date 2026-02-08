@@ -66,36 +66,48 @@ def get_organization_stats() -> str:
         total = EmployeeService.get_employee_count(db, scope_key=scope_key)
         att_stats = AttendanceService.get_attendance_stats_scoped(db, scope_key=scope_key)
 
+        today = datetime.now().strftime("%Y-%m-%d")
+        absent_records, _ = AttendanceService.get_all_attendance(
+            db,
+            date_filter=today,
+            status="Absent",
+            limit=500,
+            scope_key=scope_key,
+        )
+        absent_count = len(absent_records)
+
         return f"""Current Organization Stats:
 - Total Employees: {total}
 - Attendance Rate: {att_stats["attendance_rate"]}%
 - Employees on Leave (today): {att_stats["on_leave"]}
-- Today's Status: {att_stats["present"]} Present, {att_stats["absent"]} Absent"""
+- Today's Status: {att_stats["present"]} Present, {absent_count} Absent"""
     finally:
         db.close()
 
 
 @tool
 def get_absent_employees(date: str = None) -> str:
-    """Get employees absent on a specific date (YYYY-MM-DD)."""
+    """Get employees marked Absent on a specific date (YYYY-MM-DD)."""
     date_norm = _normalize_date(date)
     db = get_db_session()
     try:
         scope_key = _scope_key()
-        absent_employees = AttendanceService.get_absent_employees_scoped(
-            db, date_norm, scope_key=scope_key
+        records, _ = AttendanceService.get_all_attendance(
+            db,
+            date_filter=date_norm,
+            status="Absent",
+            limit=500,
+            scope_key=scope_key,
         )
 
-        if not absent_employees:
-            return f"No employees are absent on {date_norm}."
+        if not records:
+            return f"No employees were marked Absent on {date_norm}."
 
-        employee_list = "\n".join(
-            [
-                f"- {emp['name']} ({emp['department']}, {emp['role']}) - {emp['reason']}"
-                for emp in absent_employees
-            ]
+        lines = "\n".join(
+            [f"- {r.employee_name} ({r.role}) - Marked as Absent" for r in records[:25]]
         )
-        return f"Employees absent on {date_norm} ({len(absent_employees)} total):\n{employee_list}"
+        more = "" if len(records) <= 25 else f"\n... and {len(records) - 25} more"
+        return f"Employees absent on {date_norm} ({len(records)} total):\n{lines}{more}"
     except Exception as e:
         return f"I couldn't retrieve the absent employee list for {date_norm}. Error: {str(e)}"
     finally:

@@ -192,7 +192,8 @@ def startup_event():
 
     db = SessionLocal()
     try:
-        seed_global_demo_data(db)
+        if not settings.DEMO_ISOLATION_ENABLED:
+            seed_global_demo_data(db)
     finally:
         db.close()
     print("Database tables created/verified.")

@@ -39,14 +39,35 @@ class AttendanceService:
         query = db.query(Attendance)
 
         if scope_key:
-            query = query.filter(or_(Attendance.device_id == None, Attendance.device_id == scope_key))
+            query = query.filter(Attendance.device_id == scope_key)
 
         if date_filter:
             query = query.filter(Attendance.date == date_filter)
         if employee_id:
             query = query.filter(Attendance.employee_id == employee_id)
         if status:
-            query = query.filter(Attendance.status == status)
+            coerced_status = status
+            if isinstance(status, str):
+                s = status.strip().lower()
+                # Accept common variants: enum names, values, snake-case, etc.
+                if s in {"present", "p"}:
+                    coerced_status = AttendanceStatusEnum.PRESENT
+                elif s in {"absent", "a"}:
+                    coerced_status = AttendanceStatusEnum.ABSENT
+                elif s in {"on leave", "on_leave", "leave", "onleave", "on-leave", "on_leave"}:
+                    coerced_status = AttendanceStatusEnum.ON_LEAVE
+                else:
+                    # Try matching by enum name (e.g. ON_LEAVE)
+                    try:
+                        coerced_status = AttendanceStatusEnum[s.upper()]
+                    except Exception:
+                        # Try matching by enum value (e.g. "On Leave")
+                        try:
+                            coerced_status = AttendanceStatusEnum(status)
+                        except Exception:
+                            coerced_status = status
+
+            query = query.filter(Attendance.status == coerced_status)
 
         total = query.count()
         records = query.order_by(Attendance.date.desc()).offset(skip).limit(limit).all()
@@ -210,7 +231,7 @@ class AttendanceService:
         today = datetime.now().strftime("%Y-%m-%d")
         query = db.query(Attendance).filter(Attendance.date == today)
         if scope_key:
-            query = query.filter(or_(Attendance.device_id == None, Attendance.device_id == scope_key))
+            query = query.filter(Attendance.device_id == scope_key)
         return query.all()
 
     @staticmethod
@@ -247,7 +268,7 @@ class AttendanceService:
             date_str = datetime.now().strftime("%Y-%m-%d")
         query = db.query(Attendance).filter(Attendance.date == date_str)
         if scope_key:
-            query = query.filter(or_(Attendance.device_id == None, Attendance.device_id == scope_key))
+            query = query.filter(Attendance.device_id == scope_key)
 
         total = query.count()
         present = query.filter(Attendance.status == AttendanceStatusEnum.PRESENT).count()
@@ -277,7 +298,7 @@ class AttendanceService:
         ).filter(Attendance.date >= start_date, Attendance.date <= end_date)
 
         if scope_key:
-            q = q.filter(or_(Attendance.device_id == None, Attendance.device_id == scope_key))
+            q = q.filter(Attendance.device_id == scope_key)
 
         results = (
             q.group_by(Attendance.employee_id, Attendance.employee_name, Attendance.status).all()
@@ -354,14 +375,14 @@ class AttendanceService:
     def _get_employees_for_absent_check(db: Session, scope_key: Optional[str]):
         q = db.query(Employee)
         if scope_key:
-            q = q.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
+            q = q.filter(Employee.device_id == scope_key)
         return q.all(), q.count()
 
     @staticmethod
     def _get_attendance_for_absent_check(db: Session, date_str: str, scope_key: Optional[str]):
         q = db.query(Attendance).filter(Attendance.date == date_str)
         if scope_key:
-            q = q.filter(or_(Attendance.device_id == None, Attendance.device_id == scope_key))
+            q = q.filter(Attendance.device_id == scope_key)
         return q.all()
 
     @staticmethod

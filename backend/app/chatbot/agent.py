@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import re
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -13,6 +14,17 @@ settings = get_settings()
 # System prompt for the HRMS backend core
 
 SYSTEM_PROMPT = """You are HRMS Lite's AI HR Assistant. You help HR managers and employees answer questions using the organization's workforce data.
+
+SCOPE (STRICT):
+- Only answer questions related to the company/organization and HRMS topics: employees, departments, roles, headcount, attendance, leave, absences, payroll activities, HR policies (high-level), and workforce metrics.
+- If the user asks anything unrelated to HRMS/company/workforce (for example: biology, exam prep, general knowledge, coding help unrelated to HRMS), politely refuse and steer them back to HRMS topics.
+- Do not provide general-purpose explanations outside HRMS scope even if you know the answer.
+
+GROUNDING / ANTI-HALLUCINATION:
+- Treat the HRMS tools as the only source of truth.
+- For any question that requires organization-specific facts, numbers, dates, lists, counts, or comparisons, you MUST call the appropriate tool(s).
+- If you did not call a tool (or tools return no data), do NOT guess or infer. Instead say you cannot confirm with the available data and ask a clarifying question.
+- Never answer with made-up numbers (e.g., "3 employees were present") unless you retrieved the underlying data via tools in this turn.
 
 CAPABILITIES (READ-ONLY):
 - Organization overview stats and recent activity
@@ -45,7 +57,7 @@ def create_chat_agent():
         model=settings.OPENROUTER_MODEL,
         openai_api_key=settings.OPENROUTER_API_KEY,
         openai_api_base=settings.OPENROUTER_BASE_URL,
-        temperature=0.7,
+        temperature=0.2,
         max_tokens=2048,
     )
     # Create the prompt template
@@ -65,6 +77,7 @@ def create_chat_agent():
         tools=HRMS_TOOLS,
         verbose=False,
         handle_parsing_errors=True,
+        return_intermediate_steps=True,
         max_iterations=12,
     )
 
@@ -110,6 +123,25 @@ async def get_chat_response(
             for step in result["intermediate_steps"]:
                 if hasattr(step[0], "tool"):
                     tools_called.append(step[0].tool)
+
+        # Generic anti-hallucination guard:
+        # Only block numeric/data-like answers when the user is clearly asking for
+        # counts/lists/summaries and the agent did not call any tools.
+        # (Avoid blocking normal conversation.)
+        looks_like_data_request = bool(
+            re.search(
+                r"\b(how\s+many|count|total|list|show|who|stats|summary|present|absent|leave|on\s+leave|attendance)\b",
+                (message or "").lower(),
+            )
+        )
+
+        if looks_like_data_request and (not tools_called) and re.search(r"\d", (response or "")):
+            return (
+                "I can answer this using your HRMS data, but I need to fetch it with the built-in tools first. "
+                "Please ask again with a specific request (for example: 'Absent employees today' or 'Attendance summary for 2026-02-09').",
+                [],
+            )
+
         return response, tools_called
     except Exception as e:
         if settings.DEBUG:

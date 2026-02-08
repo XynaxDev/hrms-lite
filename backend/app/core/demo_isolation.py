@@ -3,6 +3,8 @@ from __future__ import annotations
 from fastapi import Depends, Header, Request
 
 from app.core.config import get_settings
+from app.db.database import SessionLocal
+from app.seed import seed_global_demo_data
 
 settings = get_settings()
 
@@ -35,7 +37,21 @@ async def get_demo_scope(
 
     mode = (settings.DEMO_ISOLATION_MODE or "device").strip().lower()
     if mode == "ip":
-        return _get_client_ip(request)
+        scope_key = _get_client_ip(request)
+        if scope_key:
+            db = SessionLocal()
+            try:
+                seed_global_demo_data(db, scope_key=scope_key)
+            finally:
+                db.close()
+        return scope_key
 
     # default: device
-    return x_device_id
+    scope_key = x_device_id
+    if scope_key:
+        db = SessionLocal()
+        try:
+            seed_global_demo_data(db, scope_key=scope_key)
+        finally:
+            db.close()
+    return scope_key

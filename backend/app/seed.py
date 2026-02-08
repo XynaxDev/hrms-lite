@@ -11,7 +11,9 @@ def _avatar_url(emp_id: str) -> str:
     return f"https://api.dicebear.com/7.x/adventurer/png?seed={emp_id}&size=128"
 
 
-def seed_global_demo_data(db: Session, employee_count: int = 10) -> None:
+def seed_global_demo_data(
+    db: Session, employee_count: int = 10, scope_key: str | None = None
+) -> None:
     """Seed employees, attendance, and activities. Each section checks for existing data independently."""
 
     base_employees = [
@@ -97,28 +99,52 @@ def seed_global_demo_data(db: Session, employee_count: int = 10) -> None:
         },
     ]
 
+    scope_suffix = "GLOBAL"
+    if scope_key:
+        s = "".join(ch for ch in scope_key.strip() if ch.isalnum())
+        scope_suffix = (s[:6] or "DEVICE").upper()
+
+    def _scoped_emp_id(base_id: str) -> str:
+        if not scope_key:
+            return base_id
+        # Ensure IDs remain unique across devices while still looking like DUM_*.
+        # Example: DUM_A1B2C3_1
+        n = base_id.split("_", 1)[-1]
+        return f"DUM_{scope_suffix}_{n}"
+
+    def _scoped_email(base_email: str, base_id: str) -> str:
+        if not scope_key:
+            return base_email
+        return f"dum.{_scoped_emp_id(base_id).lower()}@example.com"
+
     try:
         # Check if we need to seed employees
-        seed_marker = db.query(Employee).filter(Employee.id == "DUM_1").first()
+        seed_marker_id = _scoped_emp_id("DUM_1")
+        seed_marker = (
+            db.query(Employee)
+            .filter(Employee.id == seed_marker_id)
+            .first()
+        )
         if not seed_marker:
             for i, data in enumerate(base_employees[: max(0, employee_count)]):
-                if db.query(Employee).filter(Employee.id == data["id"]).first():
+                emp_id = _scoped_emp_id(data["id"])
+                if db.query(Employee).filter(Employee.id == emp_id).first():
                     continue
 
                 joined_date = str(date.today() - timedelta(days=(i * 30)))  # Each employee joined 30 days apart
                 db.add(
                     Employee(
-                        id=data["id"],
+                        id=emp_id,
                         full_name=data["full_name"],
-                        email=data["email"],
+                        email=_scoped_email(data["email"], data["id"]),
                         role=data["role"],
                         department=data["department"],
                         status=data["status"],
-                        avatar=_avatar_url(data["id"]),
+                        avatar=_avatar_url(emp_id),
                         check_in_time=None,
                         location="Remote",
                         joined_date=joined_date,
-                        device_id=None,
+                        device_id=scope_key,
                     )
                 )
             db.commit()
