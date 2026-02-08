@@ -76,6 +76,33 @@ def get_organization_stats() -> str:
 
 
 @tool
+def get_absent_employees(date: str = None) -> str:
+    """Get employees absent on a specific date (YYYY-MM-DD)."""
+    date_norm = _normalize_date(date)
+    db = get_db_session()
+    try:
+        scope_key = _scope_key()
+        absent_employees = AttendanceService.get_absent_employees_scoped(
+            db, date_norm, scope_key=scope_key
+        )
+
+        if not absent_employees:
+            return f"No employees are absent on {date_norm}."
+
+        employee_list = "\n".join(
+            [
+                f"- {emp['name']} ({emp['department']}, {emp['role']}) - {emp['reason']}"
+                for emp in absent_employees
+            ]
+        )
+        return f"Employees absent on {date_norm} ({len(absent_employees)} total):\n{employee_list}"
+    except Exception as e:
+        return f"I couldn't retrieve the absent employee list for {date_norm}. Error: {str(e)}"
+    finally:
+        db.close()
+
+
+@tool
 def get_attendance_summary(date: str = None) -> str:
     """Get attendance summary for a specific date (YYYY-MM-DD)."""
     date_norm = _normalize_date(date)
