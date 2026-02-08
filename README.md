@@ -99,8 +99,6 @@ Visit `http://localhost:5173` and you're ready to go! 🚀
 
 </div>
 
-> **📷 Note:** Replace placeholder images with actual screenshots of your application
-
 ### `🛠️ Tech Stack`
 
 **Frontend**
