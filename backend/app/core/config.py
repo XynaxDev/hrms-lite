@@ -58,6 +58,23 @@ class Settings(BaseSettings):
 
         return origins
 
+    @property
+    def cors_origin_regex(self) -> str:
+        v = (self.ALLOWED_ORIGIN_REGEX or "").strip()
+        if (v.startswith("\"") and v.endswith("\"")) or (v.startswith("'") and v.endswith("'")):
+            v = v[1:-1].strip()
+
+        if v:
+            return v
+
+        return (
+            r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|"
+            r"192\.168\.\d{1,3}\.\d{1,3}|"
+            r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+            r"172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})"
+            r"(?::(3000|5173))?$"
+        )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

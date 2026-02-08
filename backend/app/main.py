@@ -10,8 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.router import api_router
 from app.core.config import get_settings
-from app.db.database import Base, engine
+from app.db.database import Base, SessionLocal, engine
 from sqlalchemy import text
+
+from app.models.activity import Activity
+from app.models.attendance import Attendance, AttendanceStatusEnum
+from app.models.employee import DepartmentEnum, Employee, StatusEnum
+from app.seed import seed_global_demo_data
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -42,14 +47,25 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Protect against Host Header Injection
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.render.com", "*.vercel.app", "*.railway.app"],
+    allowed_hosts=(
+        ["*"]
+        if settings.DEBUG
+        else [
+            "localhost",
+            "127.0.0.1",
+            "*.render.com",
+            "*.onrender.com",
+            "*.vercel.app",
+            "*.railway.app",
+        ]
+    ),
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_origin_regex=settings.ALLOWED_ORIGIN_REGEX or None,
+    allow_origin_regex=settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=[
@@ -173,6 +189,12 @@ def startup_event():
             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_activities_device_id ON activities(device_id)"))
         except Exception:
             pass
+
+    db = SessionLocal()
+    try:
+        seed_global_demo_data(db)
+    finally:
+        db.close()
     print("Database tables created/verified.")
 
 

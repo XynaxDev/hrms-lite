@@ -4,7 +4,7 @@ Activity service for managing system activities.
 
 from typing import List, Tuple
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 import uuid
 
 from app.models.activity import Activity
@@ -19,7 +19,7 @@ class ActivityService:
         """Get all activities with pagination."""
         query = db.query(Activity).order_by(desc(Activity.created_at))
         if scope_key:
-            query = query.filter(Activity.device_id == scope_key)
+            query = query.filter(or_(Activity.device_id == None, Activity.device_id == scope_key))
         total = query.count()
         activities = query.offset(skip).limit(limit).all()
         return activities, total

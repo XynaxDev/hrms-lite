@@ -60,7 +60,7 @@ class EmployeeService:
         query = db.query(Employee)
 
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
 
         # Apply filters
         if department:
@@ -106,7 +106,7 @@ class EmployeeService:
     ) -> Optional[Employee]:
         query = db.query(Employee).filter(Employee.id == employee_id)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         return query.first()
 
     @staticmethod
@@ -120,7 +120,7 @@ class EmployeeService:
             func.lower(Employee.id) == employee_id.strip().lower()
         )
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         return query.first()
 
     @staticmethod
@@ -134,7 +134,7 @@ class EmployeeService:
     ) -> Optional[Employee]:
         query = db.query(Employee).filter(Employee.email == email)
         if scope_key:
-            query = query.filter(Employee.device_id == scope_key)
+            query = query.filter(or_(Employee.device_id == None, Employee.device_id == scope_key))
         return query.first()
 
     @staticmethod
