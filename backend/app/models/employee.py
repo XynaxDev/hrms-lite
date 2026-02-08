@@ -36,8 +36,24 @@ class Employee(Base):
     full_name = Column(String(100), nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     role = Column(String(100), nullable=False)
-    department = Column(SQLEnum(DepartmentEnum), nullable=False, index=True)
-    status = Column(SQLEnum(StatusEnum), default=StatusEnum.ACTIVE, index=True)
+    department = Column(
+        SQLEnum(
+            DepartmentEnum,
+            values_callable=lambda x: [e.value for e in x],
+            name="departmentenum",
+        ),
+        nullable=False,
+        index=True,
+    )
+    status = Column(
+        SQLEnum(
+            StatusEnum,
+            values_callable=lambda x: [e.value for e in x],
+            name="statusenum",
+        ),
+        default=StatusEnum.ACTIVE,
+        index=True,
+    )
     avatar = Column(Text, nullable=True)
     check_in_time = Column(String(20), nullable=True)
     location = Column(String(200), nullable=True)
