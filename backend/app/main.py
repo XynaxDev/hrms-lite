@@ -119,16 +119,20 @@ async def health_check():
 def startup_event():
     Base.metadata.create_all(bind=engine)
 
-    with engine.begin() as conn:
-        # Keep enum labels backward-compatible across deployments.
-        # Some older DBs store uppercase labels (ACTIVE) while newer code paths may
-        # attempt to write enum member names (INACTIVE). We normalize to uppercase.
-        for label in ("ACTIVE", "INACTIVE", "TERMINATED", "ON_LEAVE"):
-            try:
-                conn.execute(text(f"ALTER TYPE statusenum ADD VALUE IF NOT EXISTS '{label}'"))
-            except Exception:
-                pass
+    # ALTER TYPE ... ADD VALUE cannot run inside a transaction block on many
+    # Postgres versions. Use AUTOCOMMIT to ensure it actually takes effect.
+    for label in ("ACTIVE", "INACTIVE", "TERMINATED", "ON_LEAVE"):
+        try:
+            with engine.connect().execution_options(
+                isolation_level="AUTOCOMMIT"
+            ) as conn:
+                conn.execute(
+                    text(f"ALTER TYPE statusenum ADD VALUE IF NOT EXISTS '{label}'")
+                )
+        except Exception:
+            pass
 
+    with engine.begin() as conn:
         # Normalize any legacy/title-case values to uppercase labels.
         # Use ::text casting so it works regardless of enum label set.
         try:
