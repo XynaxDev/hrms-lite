@@ -90,7 +90,7 @@ def get_attendance_record(
             status_code=404,
             detail=f"Attendance record with ID {attendance_id} not found",
         )
-    if scope_key and record.device_id != scope_key:
+    if scope_key and record.device_id not in (None, scope_key):
         raise HTTPException(
             status_code=404,
             detail=f"Attendance record with ID {attendance_id} not found",
@@ -165,7 +165,7 @@ def update_attendance(
             status_code=404,
             detail=f"Attendance record with ID {attendance_id} not found",
         )
-    if scope_key and existing.device_id != scope_key:
+    if scope_key and existing.device_id not in (None, scope_key):
         raise HTTPException(
             status_code=404,
             detail=f"Attendance record with ID {attendance_id} not found",
@@ -192,7 +192,7 @@ def delete_attendance(
             status_code=404,
             detail=f"Attendance record with ID {attendance_id} not found",
         )
-    if scope_key and existing.device_id != scope_key:
+    if scope_key and existing.device_id not in (None, scope_key):
         raise HTTPException(
             status_code=404,
             detail=f"Attendance record with ID {attendance_id} not found",
