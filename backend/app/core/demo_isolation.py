@@ -38,7 +38,7 @@ async def get_demo_scope(
     mode = (settings.DEMO_ISOLATION_MODE or "device").strip().lower()
     if mode == "ip":
         scope_key = _get_client_ip(request)
-        if scope_key:
+        if scope_key and settings.DEMO_AUTO_SEED:
             db = SessionLocal()
             try:
                 seed_global_demo_data(db, scope_key=scope_key)
@@ -48,7 +48,7 @@ async def get_demo_scope(
 
     # default: device
     scope_key = x_device_id
-    if scope_key:
+    if scope_key and settings.DEMO_AUTO_SEED:
         db = SessionLocal()
         try:
             seed_global_demo_data(db, scope_key=scope_key)

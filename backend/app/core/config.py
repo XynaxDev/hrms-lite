@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # Demo isolation (no-auth demo mode)
     DEMO_ISOLATION_ENABLED: bool = False
     DEMO_ISOLATION_MODE: str = "device"  # device | ip
+    DEMO_AUTO_SEED: bool = True
 
     # Server
     HOST: str = "0.0.0.0"

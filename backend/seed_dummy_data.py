@@ -3,6 +3,8 @@ from datetime import date, timedelta
 
 from app.db.database import SessionLocal
 from app.models.employee import DepartmentEnum, Employee, StatusEnum
+from app.models.attendance import Attendance
+from app.models.activity import Activity
 from app.seed import seed_global_demo_data
 from sqlalchemy.exc import IntegrityError
 
@@ -81,6 +83,37 @@ def seed_dummy_employees(count: int) -> int:
         db.close()
 
 
+def clear_demo_data(scope_key: str | None) -> dict:
+    db = SessionLocal()
+    try:
+        q_emp = db.query(Employee)
+        q_att = db.query(Attendance)
+        q_act = db.query(Activity)
+
+        if scope_key is None:
+            q_emp = q_emp.filter(Employee.device_id.is_(None))
+            q_att = q_att.filter(Attendance.device_id.is_(None))
+            q_act = q_act.filter(Activity.device_id.is_(None))
+        else:
+            q_emp = q_emp.filter(Employee.device_id == scope_key)
+            q_att = q_att.filter(Attendance.device_id == scope_key)
+            q_act = q_act.filter(Activity.device_id == scope_key)
+
+        deleted_activities = q_act.delete(synchronize_session=False)
+        deleted_attendance = q_att.delete(synchronize_session=False)
+        deleted_employees = q_emp.delete(synchronize_session=False)
+
+        db.commit()
+        return {
+            "scope_key": scope_key,
+            "employees_deleted": int(deleted_employees or 0),
+            "attendance_deleted": int(deleted_attendance or 0),
+            "activities_deleted": int(deleted_activities or 0),
+        }
+    finally:
+        db.close()
+
+
 def seed_complete_demo_data(count: int) -> None:
     """Seed employees, attendance, and activities using the centralized seed function"""
     db = SessionLocal()
@@ -97,7 +130,22 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Seed dummy employees and demo data")
     parser.add_argument("--count", type=int, default=10, help="Number of employees to create")
     parser.add_argument("--employees-only", action="store_true", help="Only seed employees (no attendance/activities)")
+    parser.add_argument("--clear", action="store_true", help="Clear demo data instead of seeding")
+    parser.add_argument("--scope", type=str, default="", help="Device scope key (X-Device-Id) to clear")
+    parser.add_argument("--global", dest="clear_global", action="store_true", help="When clearing, target global rows (device_id NULL)")
     args = parser.parse_args()
+
+    if args.clear:
+        scope_key = None
+        if not args.clear_global:
+            v = (args.scope or "").strip()
+            scope_key = v or None
+        result = clear_demo_data(scope_key)
+        print(
+            f"Clear complete for scope={result['scope_key']}: "
+            f"{result['employees_deleted']} employees, {result['attendance_deleted']} attendance, {result['activities_deleted']} activities deleted."
+        )
+        return
 
     if args.employees_only:
         added = seed_dummy_employees(args.count)
