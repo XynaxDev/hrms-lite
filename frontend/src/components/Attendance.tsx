@@ -44,6 +44,14 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
   const [markSearch, setMarkSearch] = useState('');
   const [markData, setMarkData] = useState({ employeeId: '', status: 'Present' });
 
+  const getEmployeeAvatarForRecord = useCallback(
+    (employeeId: string, recordAvatar?: string) => {
+      const emp = employees.find((e) => e.id === employeeId);
+      return getAvatarSrc(emp?.avatar || recordAvatar);
+    },
+    [employees]
+  );
+
   const handleDateChange = useCallback((nextDate: string) => {
     setDate(nextDate);
     const today = getTodayLocal();
@@ -243,7 +251,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <img src={getAvatarSrc(record.avatar)} alt={record.employeeName} className="h-10 w-10 rounded-full object-cover border border-slate-100 shadow-sm" />
+                          <img src={getEmployeeAvatarForRecord(record.employeeId, record.avatar)} alt={record.employeeName} className="h-10 w-10 rounded-full object-cover border border-slate-100 shadow-sm" />
                           <div>
                             <div className="font-bold text-slate-900">{record.employeeName}</div>
                             <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{record.role}</div>

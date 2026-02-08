@@ -106,7 +106,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onGoHome, is
                 
                 {/* Tooltip - Fixed positioning */}
                 <div className="hidden md:block absolute left-full ml-6 top-1/2 -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-[9999] shadow-xl border border-slate-700">
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-8 border-t-transparent border-r-8 border-r-slate-900"></div>
                   {item.label}
                 </div>
               </button>
