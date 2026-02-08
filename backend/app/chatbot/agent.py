@@ -1,8 +1,3 @@
-"""
-LangChain agent for HRMS chatbot with OpenRouter integration.
-Uses controlled tool-calling architecture for secure database access.
-"""
-
 from typing import List, Tuple
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_openai_tools_agent
@@ -16,41 +11,35 @@ from app.schemas.chat import ChatMessage, ChatRole
 settings = get_settings()
 
 # System prompt for the HRMS backend core
-SYSTEM_PROMPT = """You are HRMS Lite's Intelligent Core. You help HR managers and employees with workforce data and queries.
 
-Your capabilities include:
-- Providing recent organization activity and events
-- Providing employee count and headcount information
-- Showing department breakdowns and distributions
-- Finding employees who are on leave
-- Finding employees who are absent today
-- Searching for specific employees by name, email, or role
-- Showing attendance records and statistics
-- Getting details about specific employees
+SYSTEM_PROMPT = """You are HRMS Lite's AI HR Assistant. You help HR managers and employees answer questions using the organization's workforce data.
 
-IMPORTANT GUIDELINES:
-1. Be professional, helpful, and concise in your responses
-2. Use the available tools to fetch real data from the database:
-   - Use get_absent_employees_today() when asked about who is absent today
-   - Use get_today_attendance() when asked about overall attendance stats
-   - Use get_employees_on_leave() when asked about leave
-3. If asked about something you cannot do (like modifying salaries, firing employees, or accessing sensitive personal data), politely explain that those actions require administrative privileges
-4. Always provide accurate information based on the database queries
-5. When presenting lists, format them clearly for easy reading
-6. If a query returns no results, suggest alternative searches or ask for clarification
+CAPABILITIES (READ-ONLY):
+- Organization overview stats and recent activity
+- Employee lists, counts, statuses, and department breakdowns
+- Employee search and employee detail lookup
+- Attendance summaries and reports, including date-based questions and comparisons
 
-Remember: You only have READ access to employee and attendance data. You cannot modify, create, or delete records through this interface."""
+TOOL USAGE:
+- Use the provided tools whenever a question requires real data. Do not guess.
+- Prefer the most direct tool that answers the question in one call.
+- If a question needs multiple steps (compare dates, trends, filters), chain tools and then summarize.
 
+RESPONSE STYLE:
+- Be concise and professional.
+- Use clear headings and bullet lists for multi-item outputs.
+
+SAFETY / LIMITS:
+- You cannot modify/create/delete records.
+- Refuse requests for secrets, credentials, raw SQL execution, or sensitive personal identifiers.
+"""
 
 def create_chat_agent():
     """Create and configure the LangChain agent with OpenRouter."""
     from datetime import datetime
-
     current_date = datetime.now().strftime("%B %d, %Y")
-
     # Enrich system prompt with current date context
     dynamic_prompt = f"{SYSTEM_PROMPT}\n\nCURRENT CONTEXT:\n- Today is {current_date}\n- All relative time queries (today, this month, etc.) should be based on this date."
-
     # Configure OpenRouter-compatible LLM
     llm = ChatOpenAI(
         model=settings.OPENROUTER_MODEL,
@@ -59,7 +48,6 @@ def create_chat_agent():
         temperature=0.7,
         max_tokens=2048,
     )
-
     # Create the prompt template
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -69,17 +57,15 @@ def create_chat_agent():
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ]
     )
-
     # Create the agent with tools
     agent = create_openai_tools_agent(llm, HRMS_TOOLS, prompt)
-
     # Create the executor
     agent_executor = AgentExecutor(
         agent=agent,
         tools=HRMS_TOOLS,
         verbose=False,
         handle_parsing_errors=True,
-        max_iterations=5,
+        max_iterations=12,
     )
 
     return agent_executor
@@ -99,16 +85,12 @@ def convert_history_to_messages(history: List[ChatMessage]) -> List:
 async def get_chat_response(
     message: str, history: List[ChatMessage]
 ) -> Tuple[str, List[str]]:
-    """
-    Get a response from the HRMS chatbot.
-
+    """Get a response from the HRMS chatbot.
     Args:
         message: User's message
         history: Conversation history
-
     Returns:
-        Tuple of (response text, list of tools called)
-    """
+        Tuple of (response text, list of tools called)"""
     try:
         agent = create_chat_agent()
         chat_history = convert_history_to_messages(history)
@@ -128,9 +110,7 @@ async def get_chat_response(
             for step in result["intermediate_steps"]:
                 if hasattr(step[0], "tool"):
                     tools_called.append(step[0].tool)
-
         return response, tools_called
-
     except Exception as e:
         if settings.DEBUG:
             print(f"Chatbot Error: {e}")

@@ -39,7 +39,7 @@ const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, description, ch
         style={{ pointerEvents: 'auto' }}
       />
       {/* Dialog Container - constrained width, always topmost */}
-      <div className="relative z-10 w-full max-w-md mx-4 max-h-[90dvh] overflow-hidden bg-white rounded-2xl shadow-2xl flex flex-col">
+      <div className="relative z-10 w-full max-w-md mx-4 max-h-[95vh] overflow-visible bg-white rounded-2xl shadow-2xl flex flex-col">
         {/* Header */}
         {(title || description) && (
           <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-3 rounded-t-2xl">
@@ -59,7 +59,7 @@ const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, description, ch
         )}
         
         {/* Content */}
-        <div className="px-5 py-3 overflow-y-auto min-h-0">
+        <div className="px-5 py-3 overflow-visible">
           {children}
         </div>
       </div>

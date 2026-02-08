@@ -13,6 +13,7 @@ from app.services.employee_service import EmployeeService
 from app.services.attendance_service import AttendanceService
 from app.services.activity_service import ActivityService
 from app.core.demo_scope_context import get_demo_scope_key
+from datetime import datetime, timedelta
 
 
 def get_db_session() -> Session:
@@ -36,6 +37,23 @@ def _normalize_department(department: str) -> str | None:
     return d
 
 
+def _normalize_date(date_str: str | None) -> str:
+    if not date_str:
+        return datetime.now().strftime("%Y-%m-%d")
+    s = date_str.strip()
+    if not s:
+        return datetime.now().strftime("%Y-%m-%d")
+    low = s.lower()
+    if low in {"today", "now"}:
+        return datetime.now().strftime("%Y-%m-%d")
+    if low == "yesterday":
+        return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except Exception:
+        return s
+
+
 @tool
 def get_organization_stats() -> str:
     """Get a quick high-level overview of organization metrics (Dashboard stats).
@@ -53,6 +71,217 @@ def get_organization_stats() -> str:
 - Attendance Rate: {att_stats["attendance_rate"]}%
 - Employees on Leave (today): {att_stats["on_leave"]}
 - Today's Status: {att_stats["present"]} Present, {att_stats["absent"]} Absent"""
+    finally:
+        db.close()
+
+
+@tool
+def get_attendance_summary(date: str = None) -> str:
+    """Get attendance summary for a specific date (YYYY-MM-DD)."""
+    date_norm = _normalize_date(date)
+    db = get_db_session()
+    try:
+        scope_key = _scope_key()
+        stats = AttendanceService.get_attendance_stats_scoped(
+            db, date_str=date_norm, scope_key=scope_key
+        )
+        return (
+            f"Attendance Summary ({stats['date']}):\n"
+            f"- Total Recorded: {stats['total']}\n"
+            f"- Present: {stats['present']}\n"
+            f"- Absent: {stats['absent']}\n"
+            f"- On Leave: {stats['on_leave']}\n"
+            f"- Attendance Rate: {stats['attendance_rate']}%"
+        )
+    except Exception as e:
+        return f"I couldn't retrieve attendance summary for {date_norm}. Error: {str(e)}"
+    finally:
+        db.close()
+
+
+@tool
+def get_present_employees(date: str = None) -> str:
+    """List employees marked Present on a specific date (YYYY-MM-DD)."""
+    date_norm = _normalize_date(date)
+    db = get_db_session()
+    try:
+        scope_key = _scope_key()
+        records, _ = AttendanceService.get_all_attendance(
+            db,
+            date_filter=date_norm,
+            status="Present",
+            limit=500,
+            scope_key=scope_key,
+        )
+
+        if not records:
+            return f"No employees were marked Present on {date_norm}."
+
+        lines = "\n".join([f"- {r.employee_name} ({r.role})" for r in records[:25]])
+        more = "" if len(records) <= 25 else f"\n... and {len(records) - 25} more"
+        return f"Employees present on {date_norm} ({len(records)} total):\n{lines}{more}"
+    except Exception as e:
+        return f"I couldn't retrieve present employees for {date_norm}. Error: {str(e)}"
+    finally:
+        db.close()
+
+
+@tool
+def compare_attendance(date_a: str, date_b: str) -> str:
+    """Compare attendance summary between two dates (YYYY-MM-DD)."""
+    a = _normalize_date(date_a)
+    b = _normalize_date(date_b)
+    db = get_db_session()
+    try:
+        scope_key = _scope_key()
+        stats_a = AttendanceService.get_attendance_stats_scoped(
+            db, date_str=a, scope_key=scope_key
+        )
+        stats_b = AttendanceService.get_attendance_stats_scoped(
+            db, date_str=b, scope_key=scope_key
+        )
+
+        return (
+            "Attendance Comparison:\n"
+            f"- {stats_a['date']}: {stats_a['present']} Present, {stats_a['absent']} Absent, {stats_a['on_leave']} On Leave (Rate {stats_a['attendance_rate']}%)\n"
+            f"- {stats_b['date']}: {stats_b['present']} Present, {stats_b['absent']} Absent, {stats_b['on_leave']} On Leave (Rate {stats_b['attendance_rate']}%)"
+        )
+    except Exception as e:
+        return f"I couldn't compare attendance between {a} and {b}. Error: {str(e)}"
+    finally:
+        db.close()
+
+
+@tool
+def get_repeat_absentees(
+    start_date: str = None, end_date: str = None, min_absences: int = 2
+) -> str:
+    """Find employees absent at least N times in a date range."""
+    db = get_db_session()
+    try:
+        if not end_date:
+            end_date = datetime.now().strftime("%Y-%m-%d")
+        if not start_date:
+            start_date = datetime.now().strftime("%Y-%m-01")
+        if min_absences is None or int(min_absences) < 1:
+            min_absences = 1
+
+        scope_key = _scope_key()
+        report = AttendanceService.get_attendance_report_scoped(
+            db, start_date, end_date, scope_key=scope_key
+        )
+        offenders = [
+            r for r in report if int(r.get("absent", 0)) >= int(min_absences)
+        ]
+
+        if not offenders:
+            return (
+                f"No repeat absentees found from {start_date} to {end_date} "
+                f"(threshold: {min_absences}+)."
+            )
+
+        offenders.sort(key=lambda x: x.get("absent", 0), reverse=True)
+        lines = "\n".join(
+            [
+                f"- {o['name']} ({o['id']}): {o['absent']} absences"
+                for o in offenders[:25]
+            ]
+        )
+        more = "" if len(offenders) <= 25 else f"\n... and {len(offenders) - 25} more"
+        return (
+            f"Repeat absentees from {start_date} to {end_date} (threshold: {min_absences}+):\n"
+            f"{lines}{more}"
+        )
+    except Exception as e:
+        return f"I couldn't compute repeat absentees. Error: {str(e)}"
+    finally:
+        db.close()
+
+
+@tool
+def get_department_with_most_absentees(date: str = None) -> str:
+    """Find which department has the most absentees on a specific date (YYYY-MM-DD)."""
+    date_norm = _normalize_date(date)
+    db = get_db_session()
+    try:
+        scope_key = _scope_key()
+        absent_employees = AttendanceService.get_absent_employees_scoped(
+            db, date_norm, scope_key=scope_key
+        )
+
+        if not absent_employees:
+            return f"No absentees found on {date_norm}."
+
+        counts: dict[str, int] = {}
+        for emp in absent_employees:
+            dept = emp.get("department") or "Unknown"
+            counts[dept] = counts.get(dept, 0) + 1
+
+        top_dept, top_count = max(counts.items(), key=lambda x: x[1])
+        breakdown = "\n".join(
+            [
+                f"- {dept}: {count}"
+                for dept, count in sorted(counts.items(), key=lambda x: x[1], reverse=True)
+            ]
+        )
+
+        return (
+            f"Department with most absentees on {date_norm}: {top_dept} ({top_count})\n\n"
+            f"Absentee breakdown by department:\n{breakdown}"
+        )
+    except Exception as e:
+        return f"I couldn't compute department absentees for {date_norm}. Error: {str(e)}"
+    finally:
+        db.close()
+
+
+@tool
+def get_employees_on_leave_by_date(date: str = None) -> str:
+    """Get employees on leave for a specific date (YYYY-MM-DD).
+
+    Use this when the user asks who was on leave on a past date.
+    """
+    date_norm = _normalize_date(date)
+    db = get_db_session()
+    try:
+        scope_key = _scope_key()
+        records, _ = AttendanceService.get_all_attendance(
+            db,
+            date_filter=date_norm,
+            status="On Leave",
+            limit=500,
+            scope_key=scope_key,
+        )
+        if not records:
+            return f"No employees were marked on leave on {date_norm}."
+        lines = "\n".join([f"- {r.employee_name} ({r.role})" for r in records[:25]])
+        more = "" if len(records) <= 25 else f"\n... and {len(records) - 25} more"
+        return f"Employees on leave on {date_norm} ({len(records)} total):\n{lines}{more}"
+    finally:
+        db.close()
+
+
+@tool
+def get_employee_names_and_statuses() -> str:
+    """List employee names and their current status.
+
+    Use this when the user asks for a list of employees with their statuses
+    (e.g., 'all employee names and their status').
+    """
+    db = get_db_session()
+    try:
+        scope_key = _scope_key()
+        employees, total = EmployeeService.get_all_employees(
+            db, limit=200, scope_key=scope_key
+        )
+        if not employees:
+            return "No employees found."
+
+        lines = "\n".join(
+            [f"- {e.full_name}: {getattr(e.status, 'value', e.status)}" for e in employees]
+        )
+        more = "" if total <= len(employees) else f"\n... and {total - len(employees)} more"
+        return f"Employees and statuses (showing {len(employees)} of {total}):\n{lines}{more}"
     finally:
         db.close()
 
@@ -443,12 +672,20 @@ HRMS_TOOLS = [
     get_total_employees,
     get_employees_by_department,
     get_employees_on_leave,
+    get_employees_on_leave_by_date,
     get_absent_employees_today,
+    get_absent_employees,
     get_department_breakdown,
     get_status_breakdown,
+    get_employee_names_and_statuses,
     get_employee_details,
     search_employees,
     get_today_attendance,
+    get_attendance_summary,
+    get_present_employees,
     get_employee_attendance,
     get_attendance_report,
+    get_department_with_most_absentees,
+    compare_attendance,
+    get_repeat_absentees,
 ]
