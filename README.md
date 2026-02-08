@@ -46,6 +46,11 @@
 - [Contributing](#-contributing)
 - [License](#-license)
 
+### `📚 Modular Documentation`
+
+- Backend: [`backend/README.md`](./backend/README.md)
+- Frontend: [`frontend/README.md`](./frontend/README.md)
+
 ### `🎯 Overview`
 
 HRMS Lite combines a premium React-based user interface with a FastAPI backend and intelligent data querying powered by **OpenRouter AI**. It's built for modern HR teams who need powerful insights without the complexity of traditional enterprise solutions.
