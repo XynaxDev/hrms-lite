@@ -15,10 +15,16 @@ from app.schemas.employee import (
 from app.models.activity import Activity
 from app.models.attendance import Attendance
 import uuid
+from urllib.parse import quote
 
 
 class EmployeeService:
     """Service class for employee operations."""
+
+    @staticmethod
+    def _default_avatar_url(name: str) -> str:
+        safe_name = quote((name or "").strip() or "Employee")
+        return f"https://ui-avatars.com/api/?name={safe_name}&background=0F172A&color=FFFFFF&size=128"
 
     @staticmethod
     def generate_employee_id() -> str:
@@ -106,7 +112,7 @@ class EmployeeService:
             department=department_enum,
             status=status_enum,
             avatar=employee_data.avatar
-            or f"https://i.pravatar.cc/150?u={employee_data.email}",
+            or EmployeeService._default_avatar_url(employee_data.full_name),
             check_in_time=employee_data.check_in_time,
             location=employee_data.location,
             joined_date=employee_data.joined_date,
