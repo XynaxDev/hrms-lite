@@ -48,7 +48,7 @@ class Employee(Base):
     status = Column(
         SQLEnum(
             StatusEnum,
-            values_callable=lambda x: [e.value for e in x],
+            values_callable=lambda x: [e.name for e in x],
             name="statusenum",
         ),
         default=StatusEnum.ACTIVE,

@@ -22,6 +22,26 @@ class EmployeeService:
     """Service class for employee operations."""
 
     @staticmethod
+    def _coerce_enum(enum_cls, value):
+        if value is None:
+            return None
+        if isinstance(value, enum_cls):
+            return value
+        raw = value.value if hasattr(value, "value") else value
+        if raw is None:
+            return None
+        s = str(raw).strip()
+        if not s:
+            return None
+        try:
+            return enum_cls(s)
+        except Exception:
+            key = s.upper()
+            if key in enum_cls.__members__:
+                return enum_cls.__members__[key]
+            raise
+
+    @staticmethod
     def generate_employee_id() -> str:
         """Generate a unique employee ID."""
         return f"#EMP-{str(uuid4())[:8].upper()}"
@@ -122,9 +142,8 @@ class EmployeeService:
         db: Session, employee_data: EmployeeCreate, scope_key: Optional[str] = None
     ) -> Employee:
         """Create a new employee."""
-        # Map pydantic enum to SQLAlchemy enum
-        department_enum = DepartmentEnum(employee_data.department.value)
-        status_enum = StatusEnum(employee_data.status.value)
+        department_enum = EmployeeService._coerce_enum(DepartmentEnum, employee_data.department)
+        status_enum = EmployeeService._coerce_enum(StatusEnum, employee_data.status)
 
         db_employee = Employee(
             id=employee_data.id or EmployeeService.generate_employee_id(),
@@ -181,13 +200,9 @@ class EmployeeService:
             if value is not None:
                 # Handle enum conversion
                 if field == "department":
-                    value = DepartmentEnum(
-                        value.value if hasattr(value, "value") else value
-                    )
+                    value = EmployeeService._coerce_enum(DepartmentEnum, value)
                 elif field == "status":
-                    value = StatusEnum(
-                        value.value if hasattr(value, "value") else value
-                    )
+                    value = EmployeeService._coerce_enum(StatusEnum, value)
                 setattr(db_employee, field, value)
 
         db.commit()
