@@ -27,6 +27,13 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
   const [editEmployee, setEditEmployee] = useState<any>(null);
   const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
   const [leaveTodayRecords, setLeaveTodayRecords] = useState<any[]>([]);
+  const [presentTodayRecords, setPresentTodayRecords] = useState<any[]>([]);
+  const [absentTodayRecords, setAbsentTodayRecords] = useState<any[]>([]);
+  const [isStatusDrawerOpen, setIsStatusDrawerOpen] = useState(false);
+  const [statusDrawerTitle, setStatusDrawerTitle] = useState('');
+  const [statusDrawerRecords, setStatusDrawerRecords] = useState<any[]>([]);
+  const [statusDrawerSearch, setStatusDrawerSearch] = useState('');
+  const [isMobileDrawer, setIsMobileDrawer] = useState(false);
 
   const getTodayLocal = React.useCallback(() => {
     const d = new Date();
@@ -57,24 +64,65 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
     }
   }, [getTodayLocal]);
 
+  const loadPresentToday = useCallback(async () => {
+    try {
+      const today = getTodayLocal();
+      const data = await fetchAttendanceByDateAndStatus(today, 'Present');
+      setPresentTodayRecords(Array.isArray(data?.attendance_records) ? data.attendance_records : []);
+    } catch (err) {
+      console.error('Error loading present today:', err);
+      setPresentTodayRecords([]);
+    }
+  }, [getTodayLocal]);
+
+  const loadAbsentToday = useCallback(async () => {
+    try {
+      const today = getTodayLocal();
+      const data = await fetchAttendanceByDateAndStatus(today, 'Absent');
+      setAbsentTodayRecords(Array.isArray(data?.attendance_records) ? data.attendance_records : []);
+    } catch (err) {
+      console.error('Error loading absent today:', err);
+      setAbsentTodayRecords([]);
+    }
+  }, [getTodayLocal]);
+
   useEffect(() => {
     loadAttendanceSummary();
     loadLeaveToday();
+    loadPresentToday();
+    loadAbsentToday();
 
     const onFocus = () => loadAttendanceSummary();
-    const onAttendanceUpdated = () => loadAttendanceSummary();
+    const onAttendanceUpdated = () => {
+      loadAttendanceSummary();
+      loadLeaveToday();
+      loadPresentToday();
+      loadAbsentToday();
+    };
     window.addEventListener('focus', onFocus);
     window.addEventListener('attendance:updated', onAttendanceUpdated as EventListener);
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('attendance:updated', onAttendanceUpdated as EventListener);
     };
-  }, [loadAttendanceSummary, loadLeaveToday]);
+  }, [loadAttendanceSummary, loadLeaveToday, loadPresentToday, loadAbsentToday]);
 
   useEffect(() => {
     if (!selectedEmployee) return;
     loadAttendanceSummary();
   }, [selectedEmployee, loadAttendanceSummary]);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 640px)');
+    const apply = () => setIsMobileDrawer(!!mql.matches);
+    apply();
+    if ('addEventListener' in mql) {
+      mql.addEventListener('change', apply);
+      return () => mql.removeEventListener('change', apply);
+    }
+    (mql as any).addListener?.(apply);
+    return () => (mql as any).removeListener?.(apply);
+  }, []);
 
   const attendanceById = useMemo(() => {
     const map = new Map<string, any>();
@@ -95,22 +143,89 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
   const derived = useMemo(() => {
     const activeEmployees = employees.filter(e => e.status === 'Active').length;
     const leaveEmployees = Array.isArray(leaveTodayRecords) ? leaveTodayRecords.length : 0;
-    const attendanceRate = Math.round((activeEmployees / employees.length) * 100) || 0;
-    const leaveIds = new Set(
-      (leaveTodayRecords || [])
-        .map((r: any) => (r?.employeeId ?? r?.employee_id ?? '').toString().trim())
-        .filter(Boolean)
-    );
-    const leavePeople = employees.filter(e => leaveIds.has(e.id));
-    const leaveAvatars = leavePeople.slice(0, 3);
+    const presentEmployees = Array.isArray(presentTodayRecords) ? presentTodayRecords.length : 0;
+    const absentEmployees = Array.isArray(absentTodayRecords) ? absentTodayRecords.length : 0;
+    const todayTotal = presentEmployees + absentEmployees + leaveEmployees;
+    const attendanceRate = Math.round((presentEmployees / todayTotal) * 100) || 0;
+
+    const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const now = new Date();
+    const currentMonth = monthKey(now);
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonth = monthKey(lastMonthDate);
+
+    const parseJoined = (s: any) => {
+      if (!s) return null;
+      const dt = new Date(s);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    };
+
+    const currentMonthCount = employees.filter(e => {
+      const d = parseJoined((e as any).joinedDate);
+      return d ? monthKey(d) === currentMonth : false;
+    }).length;
+
+    const lastMonthCount = employees.filter(e => {
+      const d = parseJoined((e as any).joinedDate);
+      return d ? monthKey(d) === lastMonth : false;
+    }).length;
+
+    const workforceMoMPercent = lastMonthCount > 0
+      ? Math.round(((currentMonthCount - lastMonthCount) / lastMonthCount) * 100)
+      : (currentMonthCount > 0 ? 100 : 0);
+    const leaveAvatars = (leaveTodayRecords || []).slice(0, 3);
+    const presentAvatars = (presentTodayRecords || []).slice(0, 3);
+    const absentAvatars = (absentTodayRecords || []).slice(0, 3);
     const quickTeam = employees.slice(0, 6);
-    const leaveOverflow = Math.max(0, leavePeople.length - leaveAvatars.length);
-    return { activeEmployees, leaveEmployees, attendanceRate, leaveAvatars, leavePeople, leaveOverflow, quickTeam };
-  }, [employees, leaveTodayRecords]);
+    const leaveOverflow = Math.max(0, (leaveTodayRecords || []).length - leaveAvatars.length);
+    const presentOverflow = Math.max(0, (presentTodayRecords || []).length - presentAvatars.length);
+    const absentOverflow = Math.max(0, (absentTodayRecords || []).length - absentAvatars.length);
+    return {
+      activeEmployees,
+      leaveEmployees,
+      presentEmployees,
+      absentEmployees,
+      attendanceRate,
+      workforceMoMPercent,
+      leaveAvatars,
+      presentAvatars,
+      absentAvatars,
+      leaveOverflow,
+      presentOverflow,
+      absentOverflow,
+      quickTeam,
+    };
+  }, [employees, leaveTodayRecords, presentTodayRecords, absentTodayRecords]);
+
+  const openStatusDrawer = useCallback((title: string, records: any[]) => {
+    setStatusDrawerTitle(title);
+    setStatusDrawerRecords(Array.isArray(records) ? records : []);
+    setStatusDrawerSearch('');
+    setIsStatusDrawerOpen(true);
+  }, []);
+
+  const closeStatusDrawer = useCallback(() => {
+    setIsStatusDrawerOpen(false);
+    setStatusDrawerSearch('');
+  }, []);
+
+  const filteredDrawerRecords = useMemo(() => {
+    const q = (statusDrawerSearch || '').trim().toLowerCase();
+    if (!q) return statusDrawerRecords;
+    return (statusDrawerRecords || []).filter((r: any) => {
+      const name = (r?.employeeName || '').toString().toLowerCase();
+      const id = (r?.employeeId || '').toString().toLowerCase();
+      return name.includes(q) || id.includes(q);
+    });
+  }, [statusDrawerRecords, statusDrawerSearch]);
 
   const handleDownloadReport = useCallback(() => {
     const activeCount = derived.activeEmployees;
     const leaveCount = derived.leaveEmployees;
+    const presentCount = derived.presentEmployees;
+    const absentCount = derived.absentEmployees;
+    const todayTotal = presentCount + absentCount + leaveCount;
+    const attendancePercent = Math.round((presentCount / todayTotal) * 100) || 0;
 
     const deptMap: Record<string, number> = {};
     employees.forEach(e => {
@@ -158,7 +273,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
               </div>
               <div class="bg-slate-50 p-6 rounded-xl border border-slate-100">
                 <p class="text-xs font-bold text-slate-400 uppercase">Attendance</p>
-                <p class="text-3xl font-bold text-blue-600 mt-2">${Math.round((activeCount / employees.length) * 100) || 0}%</p>
+                <p class="text-3xl font-bold text-blue-600 mt-2">${attendancePercent}%</p>
               </div>
             </div>
 
@@ -259,7 +374,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
       </div>
 
       {/* Metrics Cards */}
-      <div className="mb-10 grid gap-6 sm:grid-cols-3">
+      <div className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
         <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md hover:border-slate-200 z-0 hover:z-10">
           <div className="absolute top-0 right-0 p-4 opacity-50">
              <div className="h-16 w-16 rounded-full bg-blue-50"></div>
@@ -267,9 +382,19 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
           <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Workforce</p>
           <div className="mt-4 flex items-baseline gap-2">
             <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{employees.length}</h3>
-            <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center">
-                <span className="material-symbols-outlined text-sm mr-0.5">trending_up</span> 4%
-            </span>
+            {derived.workforceMoMPercent === 0 ? (
+              <span className="text-sm font-semibold text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md flex items-center">
+                  <span className="material-symbols-outlined text-sm mr-0.5">trending_flat</span> 0%
+              </span>
+            ) : derived.workforceMoMPercent > 0 ? (
+              <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center">
+                  <span className="material-symbols-outlined text-sm mr-0.5">trending_up</span> {derived.workforceMoMPercent}%
+              </span>
+            ) : (
+              <span className="text-sm font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md flex items-center">
+                  <span className="material-symbols-outlined text-sm mr-0.5">trending_down</span> {Math.abs(derived.workforceMoMPercent)}%
+              </span>
+            )}
           </div>
           <p className="mt-2 text-xs text-slate-400">vs. last month</p>
         </div>
@@ -290,6 +415,74 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
 
         <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md hover:border-slate-200 z-0 hover:z-10">
            <div className="absolute top-0 right-0 p-4 opacity-50">
+             <div className="h-16 w-16 rounded-full bg-emerald-50"></div>
+          </div>
+          <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Present Today</p>
+          <div className="mt-4 flex items-baseline gap-2">
+            <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{derived.presentEmployees}</h3>
+            <span className="text-sm font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md">Employees</span>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => openStatusDrawer('Present Today', presentTodayRecords)}
+              className="flex -space-x-2"
+              aria-label="Open present employees"
+            >
+              {derived.presentAvatars.map((r: any) => (
+                <img
+                  key={r.id}
+                  src={getAvatarSrc(r.avatar)}
+                  alt={r.employeeName || r.employeeId}
+                  className="h-7 w-7 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover"
+                />
+              ))}
+              {derived.presentOverflow > 0 && (
+                <div className="h-7 w-7 rounded-full border-2 border-white ring-1 ring-slate-100 bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">
+                  +{derived.presentOverflow}
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md hover:border-slate-200 z-0 hover:z-10">
+           <div className="absolute top-0 right-0 p-4 opacity-50">
+             <div className="h-16 w-16 rounded-full bg-rose-50"></div>
+          </div>
+          <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Absent Today</p>
+          <div className="mt-4 flex items-baseline gap-2">
+            <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{derived.absentEmployees}</h3>
+            <span className="text-sm font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md">Employees</span>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => openStatusDrawer('Absent Today', absentTodayRecords)}
+              className="flex -space-x-2"
+              aria-label="Open absent employees"
+            >
+              {derived.absentAvatars.map((r: any) => (
+                <img
+                  key={r.id}
+                  src={getAvatarSrc(r.avatar)}
+                  alt={r.employeeName || r.employeeId}
+                  className="h-7 w-7 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover"
+                />
+              ))}
+              {derived.absentOverflow > 0 && (
+                <div className="h-7 w-7 rounded-full border-2 border-white ring-1 ring-slate-100 bg-slate-900 text-white text-[11px] font-bold flex items-center justify-center">
+                  +{derived.absentOverflow}
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md hover:border-slate-200 z-0 hover:z-10">
+           <div className="absolute top-0 right-0 p-4 opacity-50">
              <div className="h-16 w-16 rounded-full bg-amber-50"></div>
           </div>
           <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">On Leave Today</p>
@@ -299,12 +492,17 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <div className="flex -space-x-2">
-              {derived.leaveAvatars.map(e => (
+            <button
+              type="button"
+              onClick={() => openStatusDrawer('On Leave Today', leaveTodayRecords)}
+              className="flex -space-x-2"
+              aria-label="Open on leave employees"
+            >
+              {derived.leaveAvatars.map((r: any) => (
                 <img
-                  key={e.id}
-                  src={getAvatarSrc(e.avatar)}
-                  alt={e.fullName}
+                  key={r.id}
+                  src={getAvatarSrc(r.avatar)}
+                  alt={r.employeeName || r.employeeId}
                   className="h-7 w-7 rounded-full border-2 border-white ring-1 ring-slate-100 object-cover"
                 />
               ))}
@@ -313,39 +511,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
                   +{derived.leaveOverflow}
                 </div>
               )}
-            </div>
-
-            <div className="text-[11px] font-semibold text-slate-400">
-              Hover to view
-            </div>
-          </div>
-
-          <div className="pointer-events-none absolute inset-x-4 top-[5.75rem] opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-150">
-            <div className="pointer-events-auto rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-xl shadow-slate-900/10 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-sm font-bold text-slate-900">On Leave Today</div>
-                  <div className="text-xs text-slate-500 font-medium">{derived.leaveEmployees} employees</div>
-                </div>
-              </div>
-
-              {derived.leavePeople.length === 0 ? (
-                <div className="text-sm text-slate-500">No one is on leave today.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2 max-h-56 overflow-auto custom-scrollbar pr-1">
-                  {derived.leavePeople.slice(0, 12).map((emp) => (
-                    <div key={emp.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2 hover:bg-slate-50 transition-colors">
-                      <img src={getAvatarSrc(emp.avatar)} alt={emp.fullName} className="h-9 w-9 rounded-full object-cover" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-slate-900 truncate">{emp.fullName}</div>
-                        <div className="text-xs text-slate-500 font-medium truncate">{emp.role}</div>
-                      </div>
-                      <div className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg">On Leave</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -599,6 +765,80 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, onUpdateEmployee, onVi
             </form>
         )}
       </Dialog>
+
+      <div className={`fixed inset-0 z-[9999] ${isStatusDrawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+        <div
+          className={`absolute inset-0 bg-black/30 transition-opacity ${isStatusDrawerOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={closeStatusDrawer}
+        />
+        <div
+          className={`absolute bg-white shadow-2xl border-slate-100 transition-transform duration-200 ${
+            isMobileDrawer
+              ? `inset-x-0 bottom-0 w-full max-h-[70dvh] border-t rounded-t-3xl ${isStatusDrawerOpen ? 'translate-y-0' : 'translate-y-full'}`
+              : `right-0 top-0 h-full w-full max-w-md border-l ${isStatusDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`
+          }`}
+        >
+          <div className="h-full flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-lg font-bold text-slate-900 truncate">{statusDrawerTitle}</div>
+                <div className="text-xs text-slate-500 font-medium">{statusDrawerRecords.length} employees</div>
+              </div>
+              <button
+                type="button"
+                onClick={closeStatusDrawer}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-xl hover:bg-slate-100"
+                aria-label="Close drawer"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1">
+              {statusDrawerRecords.length === 0 ? (
+                <div className="text-sm text-slate-500">No records for this status today.</div>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+                      <input
+                        value={statusDrawerSearch}
+                        onChange={(e) => setStatusDrawerSearch(e.target.value)}
+                        placeholder="Search by name or id"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                      />
+                    </div>
+                  </div>
+
+                  {filteredDrawerRecords.length === 0 ? (
+                    <div className="text-sm text-slate-500">No results for "{statusDrawerSearch}".</div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      {filteredDrawerRecords.map((r: any) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 hover:bg-slate-50 transition-colors"
+                        >
+                          <img
+                            src={getAvatarSrc(r.avatar)}
+                            alt={r.employeeName || r.employeeId}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-bold text-slate-900 truncate">{r.employeeName || 'Unknown'}</div>
+                            <div className="text-[11px] font-mono font-bold text-slate-400 truncate">{r.employeeId || '-'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

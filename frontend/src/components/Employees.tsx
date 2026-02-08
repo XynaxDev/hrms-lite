@@ -603,13 +603,13 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                 <button 
                     type="button"
                     onClick={() => setIsAddModalOpen(false)}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                     Cancel
                 </button>
                 <button 
                     type="submit"
-                    className="rounded-lg bg-slate-900 px-5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                    className="h-10 rounded-lg bg-slate-900 px-5 text-sm font-semibold text-white hover:bg-slate-800"
                 >
                     Add Employee
                 </button>
@@ -829,13 +829,13 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onUpdat
                           setIsEditModalOpen(false);
                           setEditEmployee(null);
                         }}
-                        className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
                         Cancel
                     </button>
                     <button 
                         type="submit"
-                        className="rounded-lg bg-slate-900 px-5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                        className="h-10 rounded-lg bg-slate-900 px-5 text-sm font-semibold text-white hover:bg-slate-800"
                     >
                         Save Changes
                     </button>

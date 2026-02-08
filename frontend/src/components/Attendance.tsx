@@ -42,7 +42,11 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
   // Mark Attendance State
   const [isMarkingOpen, setIsMarkingOpen] = useState(false);
   const [markSearch, setMarkSearch] = useState('');
-  const [markData, setMarkData] = useState({ employeeId: '', status: 'Present' });
+  const [markStatus, setMarkStatus] = useState('Present');
+  const [markSelected, setMarkSelected] = useState<Set<string>>(new Set());
+  const [isBulkMarking, setIsBulkMarking] = useState(false);
+  const [listSearch, setListSearch] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
 
   const getEmployeeAvatarForRecord = useCallback(
     (employeeId: string, recordAvatar?: string) => {
@@ -115,6 +119,18 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
   }, [loadAttendance]);
 
   useEffect(() => {
+    const mql = window.matchMedia('(max-width: 640px)');
+    const apply = () => setIsMobile(!!mql.matches);
+    apply();
+    if ('addEventListener' in mql) {
+      mql.addEventListener('change', apply);
+      return () => mql.removeEventListener('change', apply);
+    }
+    (mql as any).addListener?.(apply);
+    return () => (mql as any).removeListener?.(apply);
+  }, []);
+
+  useEffect(() => {
     if (editingRecord) setEditStatus(editingRecord.status);
   }, [editingRecord]);
 
@@ -136,21 +152,27 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
     }
   }, [editStatus, editingRecord, loadAttendance, onToast]);
 
-  const handleMarkSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!markData.employeeId) return;
-    
+  const handleBulkMark = useCallback(async (employeeIds: string[], status: string) => {
+    if (!employeeIds.length) return;
+
+    setIsBulkMarking(true);
     try {
-      await markAttendance(markData.employeeId, markData.status, date);
+      for (const id of employeeIds) {
+        await markAttendance(id, status, date);
+      }
       onToast('Logged successfully!', 'success');
       window.dispatchEvent(new CustomEvent('attendance:updated'));
       setIsMarkingOpen(false);
+      setMarkSearch('');
+      setMarkSelected(new Set());
+      setMarkStatus('Present');
       loadAttendance();
-      setMarkData({ employeeId: '', status: 'Present' });
     } catch (error) {
       onToast('Error marking attendance', 'error');
+    } finally {
+      setIsBulkMarking(false);
     }
-  }, [date, loadAttendance, markData.employeeId, markData.status, onToast]);
+  }, [date, loadAttendance, onToast]);
 
   const stats = useMemo(() => {
     return [
@@ -173,11 +195,201 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
       link.click();
   }, [date, records]);
 
+  const filteredRecords = useMemo(() => {
+    const q = (listSearch || '').trim().toLowerCase();
+    if (!q) return records;
+    return records.filter(r => {
+      const id = (r.employeeId || '').toLowerCase();
+      const name = (r.employeeName || '').toLowerCase();
+      const role = (r.role || '').toLowerCase();
+      return id.includes(q) || name.includes(q) || role.includes(q);
+    });
+  }, [listSearch, records]);
+
   // Pagination Logic
   const indexOfLastItem = useMemo(() => currentPage * itemsPerPage, [currentPage, itemsPerPage]);
   const indexOfFirstItem = useMemo(() => indexOfLastItem - itemsPerPage, [indexOfLastItem, itemsPerPage]);
-  const currentRecords = useMemo(() => records.slice(indexOfFirstItem, indexOfLastItem), [indexOfFirstItem, indexOfLastItem, records]);
-  const totalPages = useMemo(() => Math.ceil(records.length / itemsPerPage), [itemsPerPage, records.length]);
+  const currentRecords = useMemo(() => filteredRecords.slice(indexOfFirstItem, indexOfLastItem), [filteredRecords, indexOfFirstItem, indexOfLastItem]);
+  const totalPages = useMemo(() => Math.ceil(filteredRecords.length / itemsPerPage), [itemsPerPage, filteredRecords.length]);
+
+  const markedEmployeeIds = useMemo(() => new Set(records.map(r => r.employeeId)), [records]);
+  const availableEmployees = useMemo(() => {
+    const q = (markSearch || '').trim().toLowerCase();
+    return employees.filter(e => {
+      if (markedEmployeeIds.has(e.id)) return false;
+      if (!q) return true;
+      return (e.fullName || '').toLowerCase().includes(q) || (e.id || '').toLowerCase().includes(q);
+    });
+  }, [employees, markSearch, markedEmployeeIds]);
+
+  const toggleMarkSelected = useCallback((employeeId: string) => {
+    setMarkSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(employeeId)) next.delete(employeeId);
+      else next.add(employeeId);
+      return next;
+    });
+  }, []);
+
+  const clearMarkSelected = useCallback(() => {
+    setMarkSelected(new Set());
+  }, []);
+
+  const selectAllAvailable = useCallback(() => {
+    setMarkSelected(new Set(availableEmployees.map(e => e.id)));
+  }, [availableEmployees]);
+
+  const markSelectedEmployees = useCallback(async () => {
+    const ids = Array.from(markSelected);
+    await handleBulkMark(ids, markStatus);
+  }, [handleBulkMark, markSelected, markStatus]);
+
+  const markAllAvailable = useCallback(async (status: string) => {
+    const ids = availableEmployees.map(e => e.id);
+    await handleBulkMark(ids, status);
+  }, [availableEmployees, handleBulkMark]);
+
+  const renderMarkAttendanceContent = () => (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Search</label>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+            <input
+              value={markSearch}
+              onChange={(e) => setMarkSearch(e.target.value)}
+              placeholder="Search by name or employee id"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setMarkSearch((v) => v)}
+            className="h-11 px-4 rounded-xl border border-slate-200 bg-white text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
+          >
+            Search
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+          Selected: <span className="text-slate-900">{markSelected.size}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={selectAllAvailable}
+            disabled={availableEmployees.length === 0}
+            className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            onClick={clearMarkSelected}
+            disabled={markSelected.size === 0}
+            className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="max-h-72 overflow-auto custom-scrollbar bg-white">
+          {availableEmployees.length === 0 ? (
+            <div className="p-4 text-sm text-slate-500">All employees have been marked for today.</div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {availableEmployees.map((e) => {
+                const checked = markSelected.has(e.id);
+                return (
+                  <label
+                    key={e.id}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleMarkSelected(e.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-900"
+                    />
+                    <img
+                      src={getAvatarSrc(e.avatar)}
+                      alt={e.fullName}
+                      className="h-10 w-10 rounded-full object-cover border border-slate-100"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-slate-900 truncate">{e.fullName}</div>
+                      <div className="text-[11px] font-mono font-bold text-slate-400 truncate">{e.id}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Status</label>
+        <Select
+          value={markStatus}
+          onChange={(val) => setMarkStatus(val)}
+          position="up"
+          options={[
+            { value: 'Present', label: 'Present' },
+            { value: 'Absent', label: 'Absent' },
+            { value: 'On Leave', label: 'On Leave' },
+          ]}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => markAllAvailable('Present')}
+          disabled={availableEmployees.length === 0 || isBulkMarking}
+          className="h-10 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-50"
+        >
+          Mark all present
+        </button>
+        <button
+          type="button"
+          onClick={() => markAllAvailable('Absent')}
+          disabled={availableEmployees.length === 0 || isBulkMarking}
+          className="h-10 rounded-xl bg-rose-600 text-white text-xs font-black uppercase tracking-widest hover:bg-rose-700 disabled:opacity-50"
+        >
+          Mark all absent
+        </button>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            setIsMarkingOpen(false);
+            setMarkSearch('');
+            setMarkSelected(new Set());
+            setMarkStatus('Present');
+          }}
+          className="h-10 px-6 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={markSelectedEmployees}
+          disabled={markSelected.size === 0 || isBulkMarking}
+          className="h-10 px-6 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-slate-900/10"
+        >
+          {isBulkMarking ? 'Marking...' : 'Mark selected'}
+        </button>
+      </div>
+    </div>
+  );
 
   const handlePrevPage = useCallback(() => {
     setCurrentPage(p => (p > 1 ? p - 1 : p));
@@ -230,7 +442,27 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-        {records.length > 0 ? (
+        <div className="px-6 pt-5 pb-4 border-b border-slate-100 bg-slate-50/40">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+              <input
+                value={listSearch}
+                onChange={(e) => {
+                  setListSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search name / id / role"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              />
+            </div>
+            <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+              Total: <span className="text-slate-900">{filteredRecords.length}</span>
+            </div>
+          </div>
+        </div>
+
+        {filteredRecords.length > 0 ? (
           <>
             <div className="overflow-x-auto custom-scrollbar flex-1">
               <table className="w-full text-left text-sm border-collapse">
@@ -254,6 +486,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
                           <img src={getEmployeeAvatarForRecord(record.employeeId, record.avatar)} alt={record.employeeName} className="h-10 w-10 rounded-full object-cover border border-slate-100 shadow-sm" />
                           <div>
                             <div className="font-bold text-slate-900">{record.employeeName}</div>
+                            <div className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-wider">{record.employeeId}</div>
                             <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{record.role}</div>
                           </div>
                         </div>
@@ -286,7 +519,7 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
             
             <div className="px-6 py-4 border-t border-slate-100 bg-white/80 backdrop-blur-sm flex items-center justify-between mt-auto">
                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  Showing <span className="text-slate-900">{indexOfFirstItem + 1}</span> - <span className="text-slate-900">{Math.min(indexOfLastItem, records.length)}</span> of {records.length}
+                  Showing <span className="text-slate-900">{Math.min(indexOfFirstItem + 1, filteredRecords.length)}</span> - <span className="text-slate-900">{Math.min(indexOfLastItem, filteredRecords.length)}</span> of {filteredRecords.length}
                </span>
                <div className="flex items-center gap-2">
                   <button 
@@ -325,87 +558,64 @@ const Attendance: React.FC<AttendanceProps> = ({ employees, onToast }) => {
         )}
       </div>
 
-      {/* Mark Attendance Dialog */}
-      <Dialog
-        isOpen={isMarkingOpen}
-        onClose={() => {
-          setIsMarkingOpen(false);
-          setMarkSearch('');
-        }}
-        title="Mark Attendance"
-        description={`Logging workforce presence for ${date}`}
-      >
-        <form onSubmit={handleMarkSubmit} className="space-y-6 py-4">
-            <div className="space-y-4">
-                <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Select Employee</label>
-                    {(() => {
-                        // Get employee IDs that already have attendance for this date
-                        const markedEmployeeIds = records.map(r => r.employeeId);
-                        
-                        const filtered = employees.filter(e => 
-                            !markedEmployeeIds.includes(e.id) && // Exclude already marked employees
-                            (e.fullName.toLowerCase().includes(markSearch.toLowerCase()) || 
-                            e.id.toLowerCase().includes(markSearch.toLowerCase()))
-                        );
-                        const selectedOptions = [
-                            { value: '', label: 'Select a member...' },
-                            ...filtered.map(e => ({ value: e.id, label: `${e.fullName} (${e.id})` }))
-                        ];
-                        return (
-                            <div>
-                                <Select 
-                                    value={markData.employeeId}
-                                    onChange={(val) => setMarkData({...markData, employeeId: val})}
-                                    position="down"
-                                    maxVisibleOptions={selectedOptions.length > 4 ? 3 : undefined}
-                                    options={selectedOptions}
-                                    searchValue={markSearch}
-                                    onSearchChange={setMarkSearch}
-                                    isSearchable={true}
-                                />
-                                {markSearch && filtered.length === 0 && (
-                                    <p className="text-xs text-slate-400 mt-2 pl-1">No available employees found matching "{markSearch}"</p>
-                                )}
-                                {filtered.length === 0 && !markSearch && (
-                                    <p className="text-xs text-slate-500 mt-2 pl-1">All employees have been marked for today</p>
-                                )}
-                            </div>
-                        );
-                    })()}
+      {/* Mark Attendance (Desktop Dialog) */}
+      {!isMobile ? (
+        <Dialog
+          isOpen={isMarkingOpen}
+          onClose={() => {
+            setIsMarkingOpen(false);
+            setMarkSearch('');
+            setMarkSelected(new Set());
+            setMarkStatus('Present');
+          }}
+          title="Mark Attendance"
+          description={`Logging workforce presence for ${date}`}
+        >
+          {renderMarkAttendanceContent()}
+        </Dialog>
+      ) : null}
+
+      {/* Mark Attendance (Mobile Bottom Drawer) */}
+      {isMobile ? (
+        <div className={`fixed inset-0 z-[9999] ${isMarkingOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+          <div
+            className={`absolute inset-0 bg-black/30 transition-opacity ${isMarkingOpen ? 'opacity-100' : 'opacity-0'}`}
+            onClick={() => {
+              setIsMarkingOpen(false);
+              setMarkSearch('');
+              setMarkSelected(new Set());
+              setMarkStatus('Present');
+            }}
+          />
+          <div
+            className={`absolute inset-x-0 bottom-0 max-h-[90dvh] rounded-t-3xl bg-white border-t border-slate-100 shadow-2xl transition-transform duration-200 ${isMarkingOpen ? 'translate-y-0' : 'translate-y-full'}`}
+          >
+            <div className="px-5 pt-4 pb-2 border-b border-slate-100">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-lg font-bold text-slate-900 truncate">Mark Attendance</div>
+                  <div className="text-xs text-slate-500 font-medium truncate">Logging workforce presence for {date}</div>
                 </div>
-            </div>
-            <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Activity Status</label>
-                <Select 
-                    value={markData.status}
-                    onChange={(val) => setMarkData({...markData, status: val})}
-                    position="up"
-                    options={[
-                        { value: 'Present', label: 'Present' },
-                        { value: 'Absent', label: 'Absent' },
-                        { value: 'On Leave', label: 'On Leave' }
-                    ]}
-                />
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
                 <button
-                    type="button"
-                    onClick={() => setIsMarkingOpen(false)}
-                    className="h-10 px-6 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                  type="button"
+                  onClick={() => {
+                    setIsMarkingOpen(false);
+                    setMarkSearch('');
+                    setMarkSelected(new Set());
+                    setMarkStatus('Present');
+                  }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-xl hover:bg-slate-100"
                 >
-                    Cancel
+                  <span className="material-symbols-outlined text-xl">close</span>
                 </button>
-                <button
-                    type="submit"
-                    disabled={!markData.employeeId}
-                    className="h-10 px-8 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-slate-900/10"
-                >
-                    Mark Attendance
-                </button>
+              </div>
             </div>
-        </form>
-      </Dialog>
+            <div className="px-5 overflow-y-auto custom-scrollbar">
+              {renderMarkAttendanceContent()}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Edit Attendance Dialog (Simulated for this demo) */}
       <Dialog

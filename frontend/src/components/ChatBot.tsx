@@ -151,6 +151,7 @@ const ChatBot: React.FC = () => {
               </form>
               <div className="mt-2 text-center">
                  <p className="text-[9px] text-slate-400 font-medium tracking-tight">[Enter] to send | [Shift+Enter] for new line</p>
+                 <p className="mt-1 text-[10px] text-slate-400 font-medium tracking-tight">AI can make mistakes. Please verify important details.</p>
               </div>
             </div>
           </motion.div>
